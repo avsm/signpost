@@ -1,0 +1,18 @@
+conn L2TP-PSK-NAT
+  rightsubnet=vhost:%priv
+  also=L2TP-PSK-noNAT
+
+conn L2TP-PSK-noNAT
+  authby=secret
+  pfs=no
+  auto=add
+  keyingtries=3
+  rekey=no
+  type=transport
+  left=@VPN_EXTERNAL_IP@
+  leftprotoport=17/1701
+  right=%any
+  rightprotoport=17/%any 
+  dpddelay=15
+  dpdtimeout=30
+  dpdaction=clear

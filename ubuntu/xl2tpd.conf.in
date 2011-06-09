@@ -1,0 +1,12 @@
+[global]
+ipsec saref = yes
+
+[lns default]
+ip range = @VPN_NETWORK_START_IP@-@VPN_NETWORK_END_IP@
+local ip = @VPN_NETWORK_LOCAL_IP@
+refuse chap = yes
+refuse pap = yes
+require authentication = yes
+ppp debug = yes
+pppoptfile = /etc/ppp/options.xl2tpd
+length bit = yes
