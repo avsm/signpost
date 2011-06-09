@@ -1,1 +1,9 @@
-System to form a personal VPN infrastructure between devices and computers.
+System to form a personal VPN infrastructure between devices and
+computers.
+
+It will use the VPN capabilities to automatically establish a secure
+feed between devices (e.g. Laptop/iPhone/iPad) and a coordination
+server that will initially live on the cloud (e.g. as an Amazon
+Micro AMI).
+
+Still in alpha, not for public use.
