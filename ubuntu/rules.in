@@ -1,0 +1,11 @@
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [14:2466]
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
+-A INPUT -p udp -m udp --dport 500 -j ACCEPT
+-A INPUT -p udp -m udp --dport 4500 -j ACCEPT
+-A INPUT -p udp -m policy --dir in --pol ipsec -m udp --dport 1701 -j ACCEPT
+-A INPUT -j DROP
+COMMIT
