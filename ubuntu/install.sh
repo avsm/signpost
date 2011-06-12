@@ -97,15 +97,23 @@ subst /etc/ipsec.secrets "VPN_EXTERNAL_IP" "${VPN_EXTERNAL_IP}"
 subst /etc/ipsec.secrets "PSK_SECRET" "${PSK_SECRET}"
 ${DRY} chmod 600 /etc/ipsec.secrets
 
-install_conf /etc/ppp/chap-secrets
-subst /etc/ppp/chap-secrets "VPN_NETWORK_START_IP" "${VPN_NETWORK_START_IP}"
-${DRY} chmod 600 /etc/ppp/chap-secrets
+# never overwrite chap-secrets
+if [ ! -e /etc/ppp/chap-secrets ]; then
+  install_conf /etc/ppp/chap-secrets
+  subst /etc/ppp/chap-secrets "VPN_NETWORK_START_IP" "${VPN_NETWORK_START_IP}"
+  ${DRY} chmod 600 /etc/ppp/chap-secrets
+fi
 
 install_conf /etc/sysctl.d/60-vpn.conf
 
 ${DRY} mkdir -p /etc/iptables
 install_conf /etc/iptables/rules
+subst /etc/iptables/rules "EXTERNAL_IF" "${EXTERNAL_IF}"
 
 ${DRY} /etc/init.d/iptables-persistent restart
 ${DRY} /etc/init.d/ipsec restart
 ${DRY} /etc/init.d/xl2tpd restart
+
+# bug: https://bugs.launchpad.net/ubuntu/+source/openswan/+bug/554592
+${DRY} update-rc.d -f ipsec remove
+${DRY} update-rc.d ipsec defaults
