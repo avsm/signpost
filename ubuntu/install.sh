@@ -1,8 +1,11 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
-BACKUP_DIR=/var/backup/araneus
+BACKUP_DIR=/var/araneus
 
-mkdir -p ${BACKUP_DIR}
+# uncomment for a dry run
+# DRY=echo
+
+${DRY} mkdir -p ${BACKUP_DIR}
 
 if [ `id -u` -gt 0 ]; then
   echo Must run as root
@@ -10,7 +13,7 @@ fi
 
 # First install required packages
 echo ==== Installing packages
-apt-get -y install openswan ppp xl2tpd
+${DRY} apt-get -y install openswan ppp xl2tpd
 
 # Set appropriate sysctl
 
@@ -19,9 +22,9 @@ function install_conf {
   echo "==== Installing $f -> $1"
   if [ -e "$1" ]; then
     echo "     (backing up existing file to ${BACKUP_DIR})"
-    cp "$1" "${BACKUP_DIR}/$1"
+    ${DRY} cp "$1" "${BACKUP_DIR}/${f}"
   fi
-  cp "${f}.in" "$1"
+  ${DRY} cp "${f}.in" "$1"
 }
 
 install_conf /etc/ipsec.conf
