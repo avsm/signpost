@@ -16,3 +16,10 @@ conn L2TP-PSK-noNAT
   dpddelay=15
   dpdtimeout=30
   dpdaction=clear
+
+conn passthrough-for-non-l2tp
+  type=passthrough
+  left=@VPN_EXTERNAL_IP@
+  right=0.0.0.0
+  rightsubnet=0.0.0.0/0
+  auto=route
