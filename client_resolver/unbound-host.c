@@ -63,6 +63,8 @@ int main(int argc, char *argv[])
     return 1;
   }
 
+  
+
   /*  query for webserver */
   retval = ub_resolve(ctx, argv[1], 
       48 /*  TYPE A (IPv4 address) */, 

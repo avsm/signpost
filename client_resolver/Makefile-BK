@@ -1,0 +1,20 @@
+all: resolve libnss_signpost.so.2 signpost-test
+
+resolve: resolve.c
+	gcc -I../unbound.svn/libunbound/ -L../unbound.svn/.libs/ -L../ldns.svn/lib/ \
+		-g -o resolve resolve.c ../unbound.svn/.libs/libunbound.a \
+		../ldns.svn/lib/libldns.a /usr/lib/libcrypt.a -lssl \
+		-lpthread
+
+signpost-test: signpost-test.c
+	gcc -o signpost-test signpost-test.c
+
+libnss_signpost.so.2: ../ldns.svn/lib/libldns.a ../unbound.svn/.libs/libunbound.a /usr/lib/libcrypt.a signpost-host.c
+	gcc  -shared -o libnss_signpost.so.2 -Wl,-soname,libnss_signpost.so.2 \
+	    signpost-host.c 
+#libnss_signpost.so.2: ../ldns.svn/lib/libldns.a ../unbound.svn/.libs/libunbound.a /usr/lib/libcrypt.a files-hosts.c
+#	gcc -I../unbound.svn/libunbound/ -shared -o libnss_signpost.so.2 -Wl,-soname,libnss_signpost.so.2 \
+#		files-hosts.c
+#
+clean: 
+	rm -f resolve resolve.o libnss_signpost.so.2 signpost-test *~

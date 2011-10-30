@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# required packages on a clean debian installation:
+# subversion autotools-dev autoconf libtool automake
+# libexpat1-dev  
+
 CWD=`pwd`
 # download ldns code, required by the unbound server
 if [ ! -e ldns.svn ]; then
