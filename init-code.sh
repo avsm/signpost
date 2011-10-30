@@ -37,7 +37,7 @@ cd unbound.svn
 svn up
 #compile data
 if [ ! -e Makefile ]; then
-  ./configure --disable-gost --with-ldns=../ldns.svn/
+  ./configure --disable-gost --with-ldns=../ldns.svn/ --with-pythonmodule --with-pyunbound
 fi
 make
 
