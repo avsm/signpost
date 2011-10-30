@@ -20,6 +20,7 @@
   <http://www.gnu.org/licenses/>.
 ***/
 
+#include <stdio.h>
 #include <limits.h>
 #include <nss.h>
 #include <sys/types.h>
@@ -32,7 +33,6 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <syslog.h> 
-
 
 #include "ifconf.h"
 
@@ -97,11 +97,6 @@ enum nss_status _nss_signpost_gethostbyname4_r(
                 char *buffer, size_t buflen,
                 int *errnop, int *h_errnop,
                 int32_t *ttlp) {
-
-
-    openlog("signpost", LOG_PERROR, LOG_USER);
-    syslog(LOG_WARNING, "signopost lookup called");
-    closelog();
     unsigned lo_ifi;
     char hn[HOST_NAME_MAX+1];
     size_t l, idx, ms;
@@ -124,8 +119,8 @@ enum nss_status _nss_signpost_gethostbyname4_r(
      }
      */
     /* If this fails, n_addresses is 0. Which is fine */
-    ifconf_acquire_addresses(&addresses, &n_addresses);
-
+    ifconf_acquire_addresses(name, &addresses, 
+            &n_addresses);
     /* If this call fails we fill in 0 as scope. Which is fine */
     lo_ifi = if_nametoindex(LOOPBACK_INTERFACE);
 
@@ -145,7 +140,13 @@ enum nss_status _nss_signpost_gethostbyname4_r(
     idx = ALIGN(l+1);
 
     if (n_addresses <= 0) {
-        /* Second, fill in IPv6 tuple */
+        fprintf(stderr, "no response found\n"); 
+        *errnop = ENOMEM;
+        *h_errnop = NO_RECOVERY;
+        return NSS_STATUS_NOTFOUND;
+
+        /* 
+         * // Second, fill in IPv6 tuple 
         r_tuple = (struct gaih_addrtuple*) (buffer + idx);
         r_tuple->next = r_tuple_prev;
         r_tuple->name = r_name;
@@ -156,7 +157,7 @@ enum nss_status _nss_signpost_gethostbyname4_r(
         idx += ALIGN(sizeof(struct gaih_addrtuple));
         r_tuple_prev = r_tuple;
 
-        /* Third, fill in IPv4 tuple */
+        // Third, fill in IPv4 tuple 
         r_tuple = (struct gaih_addrtuple*) (buffer + idx);
         r_tuple->next = r_tuple_prev;
         r_tuple->name = r_name;
@@ -166,6 +167,7 @@ enum nss_status _nss_signpost_gethostbyname4_r(
 
         idx += ALIGN(sizeof(struct gaih_addrtuple));
         r_tuple_prev = r_tuple;
+        */
     }
 
     /* Fourth, fill actual addresses in, but in backwards order */
@@ -211,7 +213,8 @@ static enum nss_status fill_in_hostent(
 
     alen = PROTO_ADDRESS_SIZE(af);
 
-    ifconf_acquire_addresses(&addresses, &n_addresses);
+    ifconf_acquire_addresses((const char *)hn, &addresses, 
+            &n_addresses);
 
     for (a = addresses, n = 0, c = 0; n < n_addresses; a++, n++)
         if (af == a->family)
@@ -256,12 +259,16 @@ static enum nss_status fill_in_hostent(
         assert(i == c);
         idx += c*ALIGN(alen);
     } else {
-        if (af == AF_INET)
+        *errnop = ENOMEM;
+        *h_errnop = NO_RECOVERY;
+        free(addresses);
+        return NSS_STATUS_TRYAGAIN;        
+        /*/if (af == AF_INET)
             *(uint32_t*) r_addr = LOCALADDRESS_IPV4;
         else
             memcpy(r_addr, LOCALADDRESS_IPV6, 16);
 
-        idx += ALIGN(alen);
+        idx += ALIGN(alen);  */
     }
 
     /* Fourth, add address pointer array */
@@ -340,7 +347,7 @@ enum nss_status _nss_signpost_gethostbyname3_r(
         return NSS_STATUS_NOTFOUND;
     }  */
 
-    return fill_in_hostent(hn, af, host, buffer, buflen, errnop, h_errnop, ttlp, canonp);
+    return fill_in_hostent(name, af, host, buffer, buflen, errnop, h_errnop, ttlp, canonp);
 }
 
 enum nss_status _nss_signpost_gethostbyname2_r(
@@ -410,7 +417,7 @@ enum nss_status _nss_signpost_gethostbyaddr2_r(
         return NSS_STATUS_UNAVAIL;
     }
 
-    ifconf_acquire_addresses(&addresses, &n_addresses);
+    //ifconf_acquire_addresses(&addresses, &n_addresses);
 
     for (a = addresses, n = 0; n < n_addresses; n++, a++) {
         if (af != a->family)

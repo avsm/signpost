@@ -49,7 +49,11 @@ libnss_signpost_la_LDFLAGS = \
 	-avoid-version \
 	-module \
 	-export-dynamic \
-	-shrext .so.2
+	-shrext .so.2 \
+	-lldns \
+	-lunbound 
+
+
 
 unbound_host_SOURCES = unbound-host.c 
 signpost_test_SOURCES = signpost-test.c
