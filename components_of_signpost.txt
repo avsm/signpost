@@ -78,6 +78,8 @@ FIXME: Are there potential issues with connecting through a local proxy which tu
 
 # The communication protocol between the client resolver and the personal signpost
 
+While the messages are currently extremely verbose, something like protobufs could be used for message packing in a later implementation?
+
 ## Client looking up a URL:
 
 Client -> Signpost client
@@ -109,7 +111,9 @@ Signpost client -> Personal signpost
 Personal signpost -> Signpost client
   If client is allowed to connect:
     {'data': {'status': 'ok',
-              'ps_secret': PERSONAL_SIGNPOST_NONCE_ENCRYPTED_BY_SIGNPOST_CLIENT_PUB_KEY},
+              'ps_secret': PERSONAL_SIGNPOST_NONCE_ENCRYPTED_BY_SIGNPOST_CLIENT_PUB_KEY,
+              'session_id': ID_FOR_SESSION // This unique id can be used to communicate out of bands
+                                           // information about a session with the devices.
      'signature': DATA_SIGNATURE}
 
   If client is not allowed to connect
