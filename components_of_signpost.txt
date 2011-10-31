@@ -1,0 +1,168 @@
+# Overview:
+
+  The role of:
+  * DNS
+  * the central signpost
+  * the personal singpost
+  * the client resolver
+  The:
+  * communication protocol between the client resolver and the personal signpost
+
+
+
+# The role of DNS
+DNS has in this design been marginalized to bootstrapping the signpost system. 
+It has two main roles: allowing clients to find a users signpost, and serving the users public-key.
+Using DNSSEC the authenticity of the signpost record can be verified back up to a known root.
+The DNS record serving the public-key should also include the signature of some known, or discoverable, signing authority. Using this signing authority the public-key can be verified as belonging to a given user.
+
+Ideally the DNS server should have a wildcard record catching all subdomains that are part of the singpost namespace. As far as I can tell not all DNS servers support this.
+
+TODO: how do we reliably serve the signpost related meta-information on DNS servers not supporting wildcard records? Or what if only part of a name space belongs to the signpost?
+
+  Exampels:
+    Hard to determine roots:
+      subdomain.users-root.org
+      subsubdomain.subdomain.users-root.org
+      subdomain.users-root.other-root.org
+
+    Or shared name spaces
+      mac.home.users-root.org (points to a signpost entity)
+      webserver.home.users-root.org (is a normal DNS record to a non signpost device)
+
+
+
+# The role of the central singpost
+The central signpost is a service that by having had access to a users social graph data, has been able to verify the users identity. It then signs the users public-key and acts as a trusted identity root. The central signposts key should again be signed by some internet root.
+There can be any number of central signposts. For example, one could be hosted by the computer laboratory, another by BT, etc.
+
+Whenever a personal signpost renews its public-private-key pair, the public-key is signed by the central signpost.
+
+RAMBLING: Is there an issue here? What if a private-key comes astray? An identity can then be stolen? How are we able to mark a user identity as being lost, without getting denial of service attacks?
+
+
+
+# The role of the personal signpost
+
+The personal signposts serves the following roles:
+* It maintains a list of the whereabouts and network information for devices it is responsible for.
+* It has access to the users social graph data
+* It has a set of policies. The policies determine which clients are allowed to see what, at what times and under which circumstances.
+* It ensures that policies are enforced by only serving out details about devices a client is allowed to see. It also ensures that if a policy changes, comes into effect or stops being active, any active connections no longer satisfying the policies are terminated. This is trivial if the connection is tunneled through the personal signpost. If the connection is a direct per to per connection, the personal signposts signals to the device that the connection should be terminated.
+
+The personal signpost maintains a persistent connection with all of a users devices. Whenever there is a change to the users device, such as a change of a location or network, the personal signpost is notified. The persistent connection is also used to initiate tunnels when clients want to connect to a device that is hidden behind a NAT, or otherwise not possible to connect directly to.
+
+The preliminary version of the signpost system should also expose an interface for declaring policy configurations.
+
+Whenever there is a change in the social graph, or which devices are part of the signpost, the users key should be updated. The new key is signed by the central signpost, and uploaded to the users DNS server. 
+The personal signpost maintains a list of old public-private-key pairs. When a client connects, it uses the personal signposts public-key to establish mutual trust. If the public-key is outdated, the connection can either be denied, or the new key provided (depending on policies... I am not sure which option is best?).
+
+Public-keys should be, as far as possible, cached by client systems. 
+
+RAMBLING: They should be assigned a TTL for how long they can be cached. What is a sensible public-key TTL? Maybe they could be cached until they are known to be invalid? For example: once one signpost enabled client finds out a public-key has expired, and it has received the updated one, it tells its own personal signpost about the key change, which then in turn can push this new key down to its other devices?
+
+
+
+# The role of the client resolver
+
+The client resolver has two parts. One is a DNS resolver interfaced directly by programs in user-space. The other is the signpost client which resolves DNS requests into a persistent connection with the 3rd party personal signpost corresponding to the request being made.
+
+In cases where non-standard ports are being used in the device being connected to, the resolver will return a local IP made available by a program that tunnels the request to the remote system. (?)
+
+Likewise, for connections to non-signpost enabled systems, or systems that cannot directly be accessed, a tunnel is setup through the 3rd party personal signpost.
+
+TODO: Please clarify anything I might have omitted or gotten confused about.
+FIXME: Are there potential issues with connecting through a local proxy which tunnels the request? What if we are connecting to a webserver on a signpost enabled machine. If the webserver is using SSL, could there be any complications because the IPs the end user program sees does not match what the SSL certificate is issued for?
+
+
+
+# The communication protocol between the client resolver and the personal signpost
+
+## Client looking up a URL:
+
+Client -> Signpost client
+  URL
+
+Signpost client -> DNS server:
+  URL
+
+DNS server -> Signpost client:
+  CNAME record for resource, if exists, for legacy support
+  SRV record: personal signpost IP and port.
+  SRV record: 
+    users signed public-key, key version number,
+    public-key expiration date, signing authority URL
+  
+Signpost client -> Personal signpost
+  {'data': {'action': 'connect',
+            'identity': CLIENT_ID,
+            'pub_key': CLIENT_PUB_KEY,
+            'ps_key_version_num': PERSONAL_SIGNPOST_PUB_KEY_VERSION,
+            'client_secret': CLIENT_NONCE_ENCRYPTED_BY_PERSONAL_SIGNPOST_PUB_KEY,
+            'timestamp': CURRENT_TIMESTAMP,
+            'signing_authority': SIGNING_AUTHORITY_FOR_CLIENT_PUB_KEY,
+            'client_info': {
+              'IPs': [LIST OF IPS THE CLIENT IS ACCESSIBLE UNDER] // or something of the kind
+            }},
+   'signature': DATA_SIGNATURE}
+
+Personal signpost -> Signpost client
+  If client is allowed to connect:
+    {'data': {'status': 'ok',
+              'ps_secret': PERSONAL_SIGNPOST_NONCE_ENCRYPTED_BY_SIGNPOST_CLIENT_PUB_KEY},
+     'signature': DATA_SIGNATURE}
+
+  If client is not allowed to connect
+    {'data': {'status': 'failed',
+              'message': REASON_FOR_FAILURE},
+     'signature': DATA_SIGNATURE}
+
+Both the client and personal signpost now calculate a diffie hellman shared secret used
+to symmetrically encrypt the rest of the session.
+I guess this whole handshake is basically reinventing the wheel. Please replace with any 
+sufficiently good and tested hand shaking method.
+
+Signpost client -> Personal signpost
+  {'action': 'GET',
+   'path': /resolve/REQUESTED_PATH}
+
+Personal signpost -> Signpost client
+  {'status': 'OK|FAILURE', ['message': REASON_FOR_FAILURE],
+   'data': {'IP': [LIST OF IP, port tuples the client can use in order of preference]}}
+  
+
+## Resource discovery
+
+Connection and handshake like above.
+
+Signpost client -> Personal signpost
+  {'action': 'GET',
+   'path': /resources}
+
+Personal signpost -> Signpost client
+  {'resources': [ // List of resources the client is allowed to see
+    {'name': RESOURCE_HUMAN_READABLE_NAME,
+     'provider_id': RESOURCE_ID,
+     'type': RESOURCE_TYPE // For example: printer, base station, laptop, server, projector...
+     'metadata': {WHATEVER MAKES SENSE FOR RESOURCE}}
+    ...]
+  }
+
+
+## Get access to wifi
+
+Connection and handshake like above.
+
+Signpost client -> Personal signpost
+  {'action': 'GET',
+   'path': '/resources/wifi_accesspoint'}
+  OR
+  {'action': 'GET',
+   'path': '/resources/wifi_accesspoint/college'}
+
+Personal signpost -> Signpost client
+  {'status': 'OK|FAILURE', ['message': REASON_FOR_FAILURE],
+   'data': {...}}
+
+
+More use cases welcome.
