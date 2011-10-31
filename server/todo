@@ -1,0 +1,3 @@
+Need to change the server interface to read c modules. Currently, signing a reply requires custom code. ldns library is written in c only. The current scripting functionality is in python only. I need to change the last bit and make unbound to load shared library that wil implement the reply cunstroction and signing. 
+
+Alterntatively  ican check other python dnssec libraries. 

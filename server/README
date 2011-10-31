@@ -1,0 +1,5 @@
+1) Initialize the server configuration
+unbound-control-setup
+
+2) Running the server
+./run_server.sh
