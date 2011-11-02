@@ -35,7 +35,7 @@ post '/tickets' do
 
   else
     ({
-      :status => "failed",
+      :status => "failure",
       :message => "could not validate public key"
     }).to_json
 
