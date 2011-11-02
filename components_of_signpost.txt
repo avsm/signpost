@@ -96,35 +96,12 @@ DNS server -> Signpost client:
     public-key expiration date, signing authority URL
   
 Signpost client -> Personal signpost
-  {'data': {'action': 'connect',
-            'identity': CLIENT_ID,
-            'pub_key': CLIENT_PUB_KEY,
-            'ps_key_version_num': PERSONAL_SIGNPOST_PUB_KEY_VERSION,
-            'client_secret': CLIENT_NONCE_ENCRYPTED_BY_PERSONAL_SIGNPOST_PUB_KEY,
-            'timestamp': CURRENT_TIMESTAMP,
-            'signing_authority': SIGNING_AUTHORITY_FOR_CLIENT_PUB_KEY,
-            'client_info': {
-              'IPs': [LIST OF IPS THE CLIENT IS ACCESSIBLE UNDER] // or something of the kind
-            }},
-   'signature': DATA_SIGNATURE}
+  HTTP POST request /tickets to setup a new session.
+  The details can be found in the wiki: https://github.com/avsm/signpost/wiki/Communication-protocols
 
-Personal signpost -> Signpost client
-  If client is allowed to connect:
-    {'data': {'status': 'ok',
-              'ps_secret': PERSONAL_SIGNPOST_NONCE_ENCRYPTED_BY_SIGNPOST_CLIENT_PUB_KEY,
-              'session_id': ID_FOR_SESSION // This unique id can be used to communicate out of bands
-                                           // information about a session with the devices.
-     'signature': DATA_SIGNATURE}
+After the signpost client and the personal signpost have established a shared secret, the following protocol could be used:
 
-  If client is not allowed to connect
-    {'data': {'status': 'failed',
-              'message': REASON_FOR_FAILURE},
-     'signature': DATA_SIGNATURE}
-
-Both the client and personal signpost now calculate a diffie hellman shared secret used
-to symmetrically encrypt the rest of the session.
-I guess this whole handshake is basically reinventing the wheel. Please replace with any 
-sufficiently good and tested hand shaking method.
+NOTE: Protocol is already out of date. Will rewrite to be a RESTful webservice.
 
 Signpost client -> Personal signpost
   {'action': 'GET',
