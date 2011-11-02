@@ -14,17 +14,20 @@ post '/tickets' do
   ticket_master = TicketMaster.new
 
   body = JSON.parse(request.body.read)
-  # Id of client that we can verify against signpost
+  # Id of client that we can verify using the users signpost
   ticket_master.client_id = body["client"]["id"]
-  # Signpost used for verification of client 
+  # Signpost used for verification of client id
   ticket_master.signpost = body["client"]["signpost"]
-  # The current key version that should be used
+  # The current public-key version that should be used.
+  # This helps us determine if we can use cached versions or not
   ticket_master.key_version = body["client"]["key_version"]
-  # Clients have of Diffie Hellman shared secret
-  # It is encrypted using our public-key
+  # This is one half of the shared secret that will be used
+  # for the remainder of this conversation.
+  # It is encrypted using our public-key.
   ticket_master.encrypted_client_secret = body["client_shared_secret"]
 
-  # Get the client's public key
+  # Check if we could verify the users
+  # public-key
   if ticket_master.is_valid? then
     session = ticket_master.create_ticket
     ({
