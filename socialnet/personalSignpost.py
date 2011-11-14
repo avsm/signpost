@@ -8,33 +8,85 @@
 #d) Store friends' keys
 #e) Extend address book (name, public key, social net accounts, affiliations)
 
-from twython import Twython
+#from twython import Twython
+
 from threading import Thread
 from twitterChecker import TwitterChecker
 import json
 import time
 import os.path
+import tweepy
+import simplejson, oauth
+import webbrowser
+#from OauthAccess import OauthAccess
+#from OauthRequest import OauthRequest
 
+
+#Access token	410104745-5bHJ0GjL2touskpxDhanzXfTGnoGFiW8f39Y6Vd4
+#Access token secret	Gq9Qx2zg0W7ItfRxnTXfA4JtF9MJGHithtQoIdNtaI
+#Access level	Read-only
 
 class PersonalSignpost:
-	def __init__ (self, user_screen_name):
-		#No need to do oath -> user_screen_name can be stored somewhere (store social net)
+
+	def __init__ (self, user_screen_name, password):
+		self.CONSUMER_KEY = "6HggnCjXRY2Z81bV8abcA"
+		self.CONSUMER_SECRET = "b0MSaJjSJwX51QPyjr1MMtrf00rBupD82rhdhVB8rM"
+		#Duty cycle used to update/find changes in social net
+		self.DUTY_CYCLE = 60;
+		print "Personal signpost"
 		self.user_screen_name = user_screen_name
-		self.user_address_book_filename = user_screen_name + ".ab"
+		#Local social_net cache:
+		self.password = password
 		print "PS for %s created" %(user_screen_name)
+		self.authenticate()
+		#Should load socialNet list from file (in memory)		
+		self.user_address_book_filename = user_screen_name + ".ab"
+		#Check if file exists
+		try
+			open(self.user_address_book_filename)
+			#Read file
+			
+		except IOError as e:
+			print "File %s doesn't exist" (% self.user_address_book_filename)
+			#Read input-output
+			
 		t = Thread (target = self.runFunc, args = ())
 		t.start()
-		self.twitterSignpost = TwitterChecker();
-				
-	#thread
-	def runFunc (self):
-		self.updateSocialNet()
 		
-		i = 0
+		
+	#method to authenticate a user in twitter with Oauth
+	def authenticate (self):	
+		auth = tweepy.OAuthHandler(self.CONSUMER_KEY, self.CONSUMER_SECRET)
+		try:
+			redirect_url = auth.get_authorization_url()
+		except tweepy.TweepError:
+			print 'Error! Failed to get request token.'
+		#print "Redirect URL -> %s" %(redirect_url)
+		#Redirect to the browser in order to get the Oauth pin (i.e. verifier)
+		new = 2 # open in a new tab, if possible
+		# open a public URL in the webbrowser
+		webbrowser.open(redirect_url,new=new)
+		verifier = raw_input('PIN Verifier:')
+		#Now send to twitter the verified token:
+		try:
+			auth.get_access_token(verifier)
+		except tweepy.TweepError:
+			print 'Error! Failed to get access token.'
+		self.api = tweepy.API(auth)
+		#To test if it works, uncomment the following line (posting something in your twitter wall)
+		#newTweet = raw_input('Enter a new tweet: ')
+		#api.update_status(newTweet)
+	
+	#thread. Checks periodically for changes in the social net. It should handle the requests to
+	#verify whatever happens in the social net.
+	def runFunc (self):
+		
+		self.twitterSignpost = TwitterChecker()
+		
 		while True:
 			print "user: %s - Value: %d" %(self.user_screen_name, i)
-			time.sleep(5)
-			i = i + 1
+			time.sleep(self.DUTY_CYCLE)
+			
 		
 	def updateSocialNet (self):
 		#update user's social network
