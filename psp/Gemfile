@@ -2,4 +2,4 @@ source "http://rubygems.org"
 gem "json"
 gem "sinatra"
 gem "rubydns"
-gem "net-dns" # For testing
+gem "net-dns", :git => "git@github.com:sebastian/net-dns.git"
