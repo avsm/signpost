@@ -39,11 +39,7 @@ libnss_signpost_la_SOURCES = \
 	nss-signpost.c \
 	ifconf.h
 
-if LEGACY
-libnss_signpost_la_SOURCES += legacy.c
-else
-libnss_signpost_la_SOURCES += netlink.c
-endif
+#libnss_signpost_la_SOURCES += netlink.c
 
 libnss_signpost_la_LDFLAGS = \
 	-avoid-version \

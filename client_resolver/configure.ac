@@ -20,7 +20,7 @@
 # <http://www.gnu.org/licenses/>.
 
 AC_PREREQ(2.62)
-AC_INIT([nss-signpost],[0.3],[cr409 (at) cl (dot) cam (dot) ac (dot) uk])
+AC_INIT([nss-signpost],[0.3],[crotsos])
 AC_CONFIG_SRCDIR([nss-signpost.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR(m4)
