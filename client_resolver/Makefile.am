@@ -20,7 +20,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 lib_LTLIBRARIES = libnss_signpost.la
 
-bin_PROGRAMS = unbound-host signpost-test 
+bin_PROGRAMS = unbound-host signpost-test signpost-avahi-publish 
 
 
 EXTRA_DIST=bootstrap.sh # README LICENSE
@@ -39,11 +39,7 @@ libnss_signpost_la_SOURCES = \
 	nss-signpost.c \
 	ifconf.h
 
-if LEGACY
-libnss_signpost_la_SOURCES += legacy.c
-else
 libnss_signpost_la_SOURCES += netlink.c
-endif
 
 libnss_signpost_la_LDFLAGS = \
 	-avoid-version \
@@ -54,6 +50,8 @@ libnss_signpost_la_LDFLAGS = \
 	-lunbound 
 
 
+signpost_avahi_publish_SOURCES = signpost-avahi-publish.c
+signpost_avahi_publish_LDFLAGS = -lavahi-client
 
 unbound_host_SOURCES = unbound-host.c 
 signpost_test_SOURCES = signpost-test.c
