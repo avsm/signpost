@@ -41,7 +41,8 @@ static char *name = NULL;
 
 static void create_services(AvahiClient *c);
 
-static void entry_group_callback(AvahiEntryGroup *g, AvahiEntryGroupState state, AVAHI_GCC_UNUSED void *userdata) {
+static void entry_group_callback(AvahiEntryGroup *g, 
+        AvahiEntryGroupState state, AVAHI_GCC_UNUSED void *userdata) {
     assert(g == group || group == NULL);
     group = g;
 
@@ -71,7 +72,8 @@ static void entry_group_callback(AvahiEntryGroup *g, AvahiEntryGroupState state,
 
         case AVAHI_ENTRY_GROUP_FAILURE :
 
-            fprintf(stderr, "Entry group failure: %s\n", avahi_strerror(avahi_client_errno(avahi_entry_group_get_client(g))));
+            fprintf(stderr, "Entry group failure: %s\n", 
+                    avahi_strerror(avahi_client_errno(avahi_entry_group_get_client(g))));
 
             /* Some kind of failure happened while we were registering our services */
             avahi_simple_poll_quit(simple_poll);
@@ -112,14 +114,15 @@ static void create_services(AvahiClient *c) {
          * same name should be put in the same entry group. */
 
         /* Add the service for IPP */
-/*       if ((ret = avahi_entry_group_add_service(group, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, 0, name, "_ipp._tcp", NULL, NULL, 651, "test=blah", r, NULL)) < 0) {
+       if ((ret = avahi_entry_group_add_service(group, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, 0, 
+                       name, "_signpost._tcp", NULL, NULL, 651, "test=blah", r, NULL)) < 0) {
 
             if (ret == AVAHI_ERR_COLLISION)
                 goto collision;
 
-            fprintf(stderr, "Failed to add _ipp._tcp service: %s\n", avahi_strerror(ret));
+            fprintf(stderr, "Failed to add _signpost._tcp service: %s\n", avahi_strerror(ret));
             goto fail;
-        }  */ 
+        }  
 
         /* Add the same service for BSD LPR */
 /*       if ((ret = avahi_entry_group_add_service(group, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, 0, name, "_printer._tcp", NULL, NULL, 515, NULL)) < 0) {
