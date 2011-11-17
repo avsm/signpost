@@ -38,7 +38,9 @@ AM_LDFLAGS = -lldns -lunbound
 
 libnss_signpost_la_SOURCES = \
 	nss-signpost.c \
-	nss-signpost.h
+	nss-signpost.h \
+	signpost-avahi.h \
+	signpost-avahi.c
 
 #libnss_signpost_la_SOURCES += netlink.c
 

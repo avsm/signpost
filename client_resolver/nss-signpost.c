@@ -37,6 +37,7 @@
 #include <unbound.h>
 
 #include "nss-signport.h"
+#include "signpost-avahi.h"
 
 /* We use 127.0.0.2 as IPv4 address. This has the advantage over
  * 127.0.0.1 that it can be translated back to the local hostname. For
@@ -109,6 +110,12 @@ enum nss_status _nss_signpost_gethostbyname4_r(
     struct gaih_addrtuple *r_tuple, *r_tuple_prev = NULL;
     struct address *addresses = NULL, *a;
     unsigned n_addresses = 0, n;
+
+    /* lookup signpost servers */
+    if (lookup_local_sps_server() != 0) 
+        fprintf(stderr, "Avahi Lookup failed\n");
+    else 
+        fprintf(stderr, "Avahi Lookup succeeded\n");
 
     memset(hn, 0, sizeof(hn));
     if (gethostname(hn, sizeof(hn)) < 0) {
@@ -217,6 +224,11 @@ static enum nss_status fill_in_hostent(
     unsigned n_addresses = 0, n, c;
 
     alen = PROTO_ADDRESS_SIZE(af);
+
+    if (lookup_local_sps_server() != 0) 
+        fprintf(stderr, "Avahi Lookup failed\n");
+    else 
+        fprintf(stderr, "Avahi Lookup succeeded\n");
 
     ifconf_acquire_addresses((const char *)hn, &addresses, 
             &n_addresses);
