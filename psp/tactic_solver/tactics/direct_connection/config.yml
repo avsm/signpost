@@ -1,0 +1,6 @@
+description: Tries to establish a direct peer-to-peer connection.
+prober: prober.rb
+actuator: actuator.rb
+background_process: background.rb start
+supported_interfaces:
+  - eth
