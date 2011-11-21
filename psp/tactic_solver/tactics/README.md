@@ -12,25 +12,26 @@ background_process - a background process required to evaluate tactics
 
 The configuration file should follow the pattern:
 
-description: Human readable description
-prober: PROBING_EXECUTABLE
-actuator: ACTUATING_EXECUTABLE
-background_process: BACKGROUND_PROCESS
-supported_interfaces:
-  - eth
-  ...
+  description: Human readable description
+  prober: PROBING_EXECUTABLE
+  actuator: ACTUATING_EXECUTABLE
+  daemon:
+    start: COMMAND_TO_START_DAEMON
+    stop: COMMAND_TO_STOP_DAEMON
+  supported_interfaces:
+    - eth
+    ...
 
 
 ## PROBING_EXECUTABLE
 
 The probing executable will be called as:
 
-  PROBING_EXECUTABLE interface from to
+  PROBING_EXECUTABLE interface to
 
 Where:
   
 * interface: is the type of interface being tested
-* from: is the source address
 * to: is the destination address
 
 The executable is expected to return either:
@@ -56,7 +57,7 @@ Is expected to setup a connection using the tactic.
 
 It is called as
 
-  ACTUATING_EXECUTABLE interface from to
+  ACTUATING_EXECUTABLE interface to
 
 And should return:
 
@@ -70,14 +71,15 @@ Where IP is the IP a client can use to connect to the tunnel, and PORT the
 portnumber to be used.
 
 
-## BACKGROUND_PROCESS
+## DAEMON
 
-A background process that is running on all signposts. It can be used to test
-the availability of a tactic. The tactic solver never interacts directly with
-this process.
+Each tactic can have a daemon process running. This daemon might be used to
+perform all the work related to a tactic, or only to aid incoming probes.  
+The two commands, damon start and daemon stop, should start and stop the daemon
+respectively.
 
-If this process returns any output upon being started, the tactic solver we
-take this as an indication of an error, and the tactic will not be executed.
+The tactic solver does not directly interact with the daemon in any way, except
+starting and stopping it.
 
 
 ## SUPPORTED_INTERFACES

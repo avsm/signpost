@@ -34,12 +34,21 @@ class Tactic
     }
   end
 
+  def tear_down_tactic
+    if @background_process then
+      status = `./tactics/#{@name}/#{@background_process['stop']}`
+      unless status == "" then
+        print_error "background process failed to terminate cleanly: #{status}"
+      end
+    end
+  end
+
   private
   def setup_tactic
     config = YAML::load(File.open("tactics/#{@name}/config.yml"))
     @prober = config['prober']
     @actuator = config['actuator']
-    @background_process = config['background_process']
+    @background_process = config['daemon']
     @description = config['description']
     @supported_interfaces = config['supported_interfaces']
 
@@ -47,7 +56,7 @@ class Tactic
 
     # Setup background process
     if @background_process then
-      status = `tactics/#{@name}/#{@background_process}`
+      status = `tactics/#{@name}/#{@background_process['start']}`
       unless status == "" then
         print_error "background process failed to start: #{status}"
       end

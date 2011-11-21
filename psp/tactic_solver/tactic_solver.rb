@@ -42,16 +42,26 @@ class TacticSolver
   end
 
   def add_input interface, to
-    @tactics.each do |tactic|
-      tactic.input_to_evaluate interface, to
-    end
+    @tactics.each { |tactic| tactic.input_to_evaluate interface, to }
   end
 
   def update data
-    new_data = [[ip_port, data[:client], data[:strategy], data[:interface], data[:latency], data[:bandwidth], data[:overhead]]]
+    new_data = [
+      [ip_port, 
+       data[:client], 
+       data[:strategy],
+       data[:interface],
+       data[:latency],
+       data[:bandwidth],
+       data[:overhead]]
+    ]
     self.sync_do {
       link <+ new_data
     }
+  end
+
+  def shutdown
+    @tactics.each { |tactic| tactic.tear_down_tactic }
   end
 
   private
@@ -104,3 +114,6 @@ puts "\nLinks:"
 tactic_solver.link.sort.each {|t| puts t.inspect}
 puts "\nPaths:"
 tactic_solver.path.sort.each {|t| puts t.inspect}
+
+# Important to shut it down when done, so the tactic daemons are killed
+tactic_solver.shutdown
