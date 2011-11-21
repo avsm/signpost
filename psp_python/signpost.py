@@ -3,8 +3,9 @@ import json
 # TODO: a method to check if a string if an ip is valid
 
 class Signpost_data():
-    def __init__(self):
+    def __init__(self, logger):
         self._servers = []
+        self._logger = logger
 
         # format {'device_name': 
         # {'ip_num':
@@ -24,20 +25,20 @@ class Signpost_data():
         ''' Check if the format of the data 
         is valid for processing '''
         if not (type(data) is list ):
-            print "validate_resource_list: data is not a list\n"
+            self._logger.error("validate_resource_list: json request not a list")
             return False
         for rec in data:
             if( (not (type(rec) is dict)) or
                     ('ip' not in rec) or
                     ('process_name' not in rec) or
                     ('port' not in rec)):
-                        print "validate_resource_list: record misses a field\n"
+                        self._logger.error("validate_resource_list: record field missing")
                         return False
         return True
 
     def add_json_resource_list(self, domain, device, data):
         for service in data:
-            print ("adding service %s (%s:%d)\n" % (service['process_name'], 
+            self._logger.info("adding service %s (%s:%d)" % (service['process_name'], 
                 service['ip'], service['port']))
             if (device not in self._service):
                 self._service[device] = {}
