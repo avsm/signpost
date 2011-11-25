@@ -202,7 +202,8 @@ def get_input
 end
 
 def happy_exclamation
-  expressions = ["Jolly good", "Aye captain", "Way to go", "Fabulous"]
+  expressions = ["Jolly good", "Aye captain", "Way to go", 
+                 "Fabulous", "Splendid", "Fantastic", "Good job"]
   "#{expressions[rand(expressions.size).to_i]}!"
 end
 
