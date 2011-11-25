@@ -3,3 +3,7 @@ gem "json"
 gem "sinatra"
 gem "rubydns"
 gem "net-dns", :git => "git@github.com:sebastian/net-dns.git"
+
+# The following gems are required for the tactic solver
+gem "bud"
+gem "daemons" # For the direct_connection dummy tactic
