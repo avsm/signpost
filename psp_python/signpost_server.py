@@ -3,14 +3,15 @@
 from twisted.web import server
 from twisted.web import resource, http
 from twisted.web.error import Error
-import signpost
+import signpost_data
 import json
+
 
 class Singpost_server(resource.Resource):
 
   def __init__(self, logger):
     self.isLeaf = True
-    self._server_data = signpost.Signpost_data(logger)
+    self._server_data = signpost_data.Signpost_data(logger)
     self._logger = logger
 
   def render_GET(self, request):
