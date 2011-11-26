@@ -1,0 +1,4 @@
+Requires:
+oauth, simplejson, python-twitter
+
+If you don't understand anything, contact me at: hameed.u.khan@gmail.com

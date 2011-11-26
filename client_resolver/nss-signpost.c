@@ -34,7 +34,10 @@
 #include <arpa/inet.h>
 #include <syslog.h> 
 
-#include "ifconf.h"
+#include <unbound.h>
+
+#include "nss-signport.h"
+#include "signpost-avahi.h"
 
 /* We use 127.0.0.2 as IPv4 address. This has the advantage over
  * 127.0.0.1 that it can be translated back to the local hostname. For
@@ -91,6 +94,9 @@ enum nss_status _nss_signpost_gethostbyaddr_r(
                 char *buffer, size_t buflen,
                 int *errnop, int *h_errnop) _public_;
 
+int ifconf_acquire_addresses(const char *name, 
+        struct address **_list, unsigned *_n_list) _hidden_ ;
+
 enum nss_status _nss_signpost_gethostbyname4_r(
                 const char *name,
                 struct gaih_addrtuple **pat,
@@ -104,6 +110,12 @@ enum nss_status _nss_signpost_gethostbyname4_r(
     struct gaih_addrtuple *r_tuple, *r_tuple_prev = NULL;
     struct address *addresses = NULL, *a;
     unsigned n_addresses = 0, n;
+
+    /* lookup signpost servers */
+    if (lookup_local_sps_server() != 0) 
+        fprintf(stderr, "Avahi Lookup failed\n");
+    else 
+        fprintf(stderr, "Avahi Lookup succeeded\n");
 
     memset(hn, 0, sizeof(hn));
     if (gethostname(hn, sizeof(hn)) < 0) {
@@ -212,6 +224,11 @@ static enum nss_status fill_in_hostent(
     unsigned n_addresses = 0, n, c;
 
     alen = PROTO_ADDRESS_SIZE(af);
+
+    if (lookup_local_sps_server() != 0) 
+        fprintf(stderr, "Avahi Lookup failed\n");
+    else 
+        fprintf(stderr, "Avahi Lookup succeeded\n");
 
     ifconf_acquire_addresses((const char *)hn, &addresses, 
             &n_addresses);
@@ -462,4 +479,98 @@ enum nss_status _nss_signpost_gethostbyaddr_r(
             buffer, buflen,
             errnop, h_errnop,
             NULL);
+}
+
+int ifconf_acquire_addresses(const char *name, 
+        struct address **_list, unsigned *_n_list) {
+
+        struct rtgenmsg *gen;
+        int fd, r, on = 1;
+        uint32_t seq = 4711;
+        struct address *list = NULL;
+        unsigned n_list = 0;
+        struct ub_ctx* ctx;
+        struct ub_result* result;
+        int retval, i;
+
+        //fprintf(stderr, "ifconf_acquire_addresses\n");
+
+        /*  create context */
+        ctx = ub_ctx_create();
+        if(!ctx) {
+            printf("error: could not create unbound context\n");
+            retval = -1;
+            goto finish;
+        }
+
+        //ub_ctx_debuglevel(ctx, 10);
+
+        /*  read /etc/resolv.conf for DNS proxy settings (from DHCP) */
+        if( (retval=ub_ctx_resolvconf(ctx, "/etc/resolv.conf")) != 0) {
+            fprintf(stderr, "error reading resolv.conf: %s. errno says: %s\n", 
+                    ub_strerror(retval), strerror(errno));
+            //retval = errno;
+            //goto finish;
+        }
+
+        /*  read /etc/hosts for locally supplied host addresses */
+        if( (retval=ub_ctx_hosts(ctx, "/etc/hosts")) != 0) {
+            fprintf(stderr, "error reading hosts: %s. errno says: %s\n", 
+                    ub_strerror(retval), strerror(errno));
+            //retval = errno;
+            //goto finish;
+        }
+        /*  query for webserver */
+        retval = ub_resolve(ctx, name, 
+                1 /*  TYPE A (IPv4 address) */, 
+                1 /*  CLASS IN (internet) */, &result);
+        if(retval != 0) {
+            fprintf(stderr, "error resolving: %s. errno says: %s\n", 
+                    ub_strerror(retval), strerror(errno));
+            retval = -ENOENT;
+            goto finish;
+        }
+
+        if(!result->havedata) {
+           //fprintf(stderr, "no response found\n"); 
+            retval = -ENOENT;
+            goto finish;
+        }
+
+
+        while(result->data[n_list]) {
+            list = realloc(list, (n_list+1) * sizeof(struct address));
+            if (!list) {
+                retval = -ENOMEM;
+                goto finish;
+            }
+                 struct in_addr in;
+            in.s_addr = *(uint32_t *)result->data[n_list];
+            fprintf(stderr, "found ip %s\n", inet_ntoa(in));
+            list[n_list].family = AF_INET;
+            list[n_list].scope = 1; //ifaddrmsg->ifa_scope;
+            memcpy(list[n_list].address, result->data[n_list], 4);
+            list[n_list].ifindex = 1; //ifaddrmsg->ifa_index;
+
+            n_list++;
+        }
+        r= n_list;
+        goto finish;
+finish:
+        close(fd);
+
+        ub_resolve_free(result);
+        ub_ctx_delete(ctx);
+
+        if (r < 0)
+            free(list);
+        else {
+            qsort(list, n_list, sizeof(struct address), address_compare);
+
+            *_list = list;
+            *_n_list = n_list;
+        }
+        //fprintf(stderr, "returned %d addr\n", n_list);
+
+        return r;
 }

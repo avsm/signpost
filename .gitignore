@@ -2,6 +2,7 @@
 # VIM
 *.swp
 *.swn
+*.swo
 
 ###
 # Ruby
@@ -24,3 +25,74 @@ InstalledFiles
 .yardoc
 _yardoc
 doc/
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+#################################################
+#               C code                          #
+#################################################
+# Compiled Dynamic libraries
+*.so
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# http://www.gnu.org/software/automake
+Makefile.in
+client_resolver/Makefile
+client_resolver/config.*
+
+# http://www.gnu.org/software/autoconf
+autom4te.cache
+aclocal.m4
+compile
+configure
+depcomp
+install-sh
+missing
+libtool
+stamp-h1
+ltmain.sh
+m4
+.deps
+.libs
+
+#################################################
+#               Python                          #
+#################################################
+*.py[co]
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+bin
+develop-eggs
+.installed.cfg
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+
+# log files from psp_python
+psp_python/*.log
+
+# testing executables from the client_respolve code
+client_resolver/avahi-browser
+client_resolver/signpost-avahi-parse
+client_resolver/signpost-avahi-publish
+client_resolver/signpost-avahi-resolve
+client_resolver/signpost-test
+client_resolver/unbound-host
+

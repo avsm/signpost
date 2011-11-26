@@ -1,0 +1,3 @@
+oauth>=1.0a
+simplejson>=2.0.9
+python-twitter>=0.6

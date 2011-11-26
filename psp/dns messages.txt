@@ -1,0 +1,70 @@
+# Preliminary Signpost DNS records
+
+There are two types of requests. Requests that require identification, and those that don't.
+
+
+## Requests NOT requiring authentication
+
+### Key request
+
+The key retrieval request returns the public key of a device in the signpost namespace.
+Any client can issue a key retrieval request. To prevent malicious clients from building a view of the devices existing in the signpost name space, a key request for a non-existent device should yield a valid random public-key. Subsequent requests should return the same key (within some TTL). 
+Potential problem: This could allow a malicious client to cause a denial of service attack on a signpost by having it generate numerous random public-key's and have it store them. Is there a way around this?
+
+SYNTAX:
+  
+  signpost_key.DEVICE TXT
+
+Where DEVICE is a valid full URI to the device.
+
+EXAMPLE:
+
+  signpost_key.macbook.signpost.probsteide.com TXT
+
+RETURNS:
+The public-key of the device in question as a TXT record. The key is stored under the "key" record.
+  
+
+### Signpost request
+
+In order to find the signpost services a device can connect to, it can issue a signpost SRV request.
+The request returns a list of signpost services for the requested name space.
+
+SYNTAX:
+
+  _signpost._tcp.DEVICE SRV
+
+where DEVICE is a valid full URI to the device
+
+EXAMPLE:
+
+  _singpost._tcp.filesystem.macbook.signpost.probsteide.com SRV
+  _signpost._tcp.password.homerouter.homeserv.signpost.probsteide.com SRV
+
+RETURNS:
+Returns a set of SRV records containing the IP adresses and port numbers of the signpost services.
+TODO: This should probably return canonical names that can be resolved to CNAME records...
+
+
+
+## Requests requiring authentication
+
+Common for all authenticated requests, is that the reply is encrypted. The encryption is symmetric. The key is asymmetrically encrypted with the clients public-key.
+
+
+### Resource request
+
+In order to connect to a device, a client makes a request using the devices identifier. The request itself contains the id of the requesting client. The signpost server then determines if the client should be given access to the requested resource or information, and returns it in encrypted form to the client. The information is symmetrically encrypted. The key is returned alongside the information, but encrypted using the client's public-key. The signpost also returns a set of token values that it presents to the device it wants to connect to. These token values allow the device to verify off line whether the client should be given access to resources or not.
+
+SYNTAX:
+
+  signpost_request.ID._.RESOURCE
+
+where ID is the id of the client, and RESOURCE is the full URI of the resource requested
+
+EXAMPLE:
+
+  signpost_request.macbook.anil.recoil.org._.macbook.signpost.probsteide.com
+
+RETURNS:
+A TXT record containing the IP-address and port number to connect to, along with token information that should be presented to the client upon establishing the connection.

@@ -1,0 +1,9 @@
+README
+setup.py
+oauth_python_twitter.egg-info/PKG-INFO
+oauth_python_twitter.egg-info/SOURCES.txt
+oauth_python_twitter.egg-info/dependency_links.txt
+oauth_python_twitter.egg-info/requires.txt
+oauth_python_twitter.egg-info/top_level.txt
+oauth_python_twitter.egg-info/zip-safe
+oauthtwitter/__init__.py

@@ -20,12 +20,13 @@ ACLOCAL_AMFLAGS = -I m4
 
 lib_LTLIBRARIES = libnss_signpost.la
 
-bin_PROGRAMS = unbound-host signpost-test 
+bin_PROGRAMS = unbound-host signpost-test signpost-avahi-publish signpost-avahi-resolve # \
+	       #avahi-browser
 
 
 EXTRA_DIST=bootstrap.sh # README LICENSE
 
-AM_CPPFLAGS = -include $(top_builddir)/config.h
+AM_CPPFLAGS = -include $(top_builddir)/config.h `pkg-config --cflags avahi-client`
 AM_LDFLAGS = -lldns -lunbound
 # MAINTAINERCLEANFILES=README
 # noinst_DATA = README
@@ -37,13 +38,11 @@ AM_LDFLAGS = -lldns -lunbound
 
 libnss_signpost_la_SOURCES = \
 	nss-signpost.c \
-	ifconf.h
+	nss-signpost.h \
+	signpost-avahi.h \
+	signpost-avahi.c
 
-if LEGACY
-libnss_signpost_la_SOURCES += legacy.c
-else
-libnss_signpost_la_SOURCES += netlink.c
-endif
+#libnss_signpost_la_SOURCES += netlink.c
 
 libnss_signpost_la_LDFLAGS = \
 	-avoid-version \
@@ -51,8 +50,21 @@ libnss_signpost_la_LDFLAGS = \
 	-export-dynamic \
 	-shrext .so.2 \
 	-lldns \
-	-lunbound 
+	-lunbound \
+	`pkg-config --libs avahi-client`
 
+
+signpost_avahi_publish_SOURCES = signpost-avahi-publish.c
+signpost_avahi_publish_CFLAGS = `pkg-config --cflags avahi-client`
+signpost_avahi_publish_LDFLAGS = `pkg-config --libs avahi-client`
+
+signpost_avahi_resolve_SOURCES = avahi-browser.c
+signpost_avahi_resolve_CFLAGS  = `pkg-config --cflags avahi-client`
+signpost_avahi_resolve_LDFLAGS = `pkg-config --libs avahi-client`
+
+# avahi_browser_SOURCES = avahi-browser.c
+# avahi_browser_CFLAGS  = `pkg-config --cflags avahi-client`
+# avahi_browser_LDFLAGS = `pkg-config --libs avahi-client`
 
 
 unbound_host_SOURCES = unbound-host.c 
