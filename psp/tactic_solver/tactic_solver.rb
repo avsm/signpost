@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'bud'
-require "lib/tactic"
+require 'lib/tactic_protocol'
+require 'lib/tactic'
 require 'pp'
 
 class TacticSolver
@@ -56,25 +57,79 @@ class TacticSolver
   state do
     channel :request_device_info
     channel :serve_device_info
+    scratch :new_device, [:client_id, :interface_type, :interface_id] => [:address] # For adding devices locally
     table :devices, [:client_id, :interface_type, :interface_id] => [:address]
-    table :link, [:from, :to, :strategy, :interface] => [:latency, :bandwidth, :overhead, :time_evaluated]
+    table :links, [:from, :to, :strategy, :interface] => [:latency, :bandwidth, :overhead, :time_evaluated]
   end
 
   bloom :devices do
+    # Another node wants to know about the devices we know about
     temp :device_request <= request_device_info.payloads
     serve_device_info <~ (device_request*devices).pairs do |req, dev|
       [req[0], dev]
     end
+
+    # There is a potentially change to the list of devices
+    # If the device is different from the info we already have,
+    # then we update our device table
     temp :potentially_new_device_infos <= serve_device_info.payloads
-    with :new_device_info <= potentially_new_device_infos {|d|
+    temp :new_device_info <= potentially_new_device_infos {|d|
       # We want to see if the device info differs from what we currently have
-      d unless devices.exists?(d)
-    }, begin
-      stdio <~ [["Got devices that need changing: #{new_device_info.inspected}"]]
-      devices <+- new_device_info
+      d unless devices.exists? {|old_device| old_device == d }
+    }
+    devices <+- new_device_info
+
+    # Tell all other nodes about the new device
+    serve_device_info <~ (nodes*new_device).pairs do |node, device|
+      [node.host, device]
     end
   end
 
+  ###############################
+  # Tactics #####################
+  ###############################
+  include TacticProtocol
+  state do
+    table :tactics, [:host] => [:name]
+    channel :push_link
+  end
+
+  bloom :tactic_setup do
+    tactics <= tactic_signup.payloads
+  end
+
+  bloom :tactize do
+    # When there is a new device, send it to the tactic testers
+    eval_tactic_request <~ (tactics*new_device_info).pairs do |t,nd|
+      [t.host, nd]
+    end
+
+    temp :new_local_results <= tactic_evaluation_result.payloads
+    push_link <~ (nodes*new_local_results).pairs do |n, r|
+      # We get the results from the tactic solver in the following format
+      # STRATEGY, NAME, ADDRESS, INTERFACE, LATENCY, BANDWIDTH, OVERHEAD
+      strategy = r[0]
+      name = r[1]
+      address = r[2]
+      interface = r[3]
+      latency = r[4]
+      bandwidth = r[5]
+      overhead = r[6]
+      evaluated = Time.now.to_i
+
+      # The link table format is:
+      # FROM, TO, STRATEGY, INTERFACE, LATENCY, BANDWIDTH, OVERHEAD,
+      # TIME_EVALUATED
+      result = [@name, address, strategy, interface, latency, bandwidth, overhead, evaluated]
+      [n.host, result]
+    end
+
+    links <+- push_link.payloads
+  end
+
+  ###############################
+  # Bootstrap (setup) ###########
+  ###############################
   # Connect to the main tactic solver to get started.
   bootstrap do
     unless @runs_server then
@@ -87,6 +142,9 @@ class TacticSolver
     end
   end
 
+  ###############################
+  # Good old ruby ###############
+  ###############################
   def initialize options = {}
     @server_ip = options[:ip]
     @server_port = options[:port]
@@ -106,42 +164,21 @@ class TacticSolver
   end
 
   def setup_and_run
+    # We need to have the tactic solver running
+    # before we initiate the tactics, otherwise
+    # the tactics can't register with the tactics solver.
+    self.run_bg
     # Start the tactics engine
     start_tactics
-    # Now start the tactic_solver itself
-    if @run_mode == :foreground then
-      self.run_fg
-    else
-      self.run_bg
-    end
   end
 
   def update_device device_id, interface_type, interface_id, address
-    self.sync_do {
-      self.serve_device_info <~ self.nodes {|node|
-        [node.host, [device_id, interface_type, interface_id, address]]
-      }
+    device_info = [device_id, interface_type, interface_id, address]
+    self.async_do {
+      new_device <+ [device_info]
     }
-    # Maybe add should do something else...
-    # @tactics.each { |tactic| tactic.input_to_evaluate interface, to }
   end
   alias :add_device :update_device 
-
-  def update data
-    new_data = [
-      [ip_port, 
-       data[:client], 
-       data[:strategy],
-       data[:interface],
-       data[:latency],
-       data[:bandwidth],
-       data[:overhead]]
-    ]
-    self.sync_do {
-      link <+ new_data
-      mcast <~ new_data
-    }
-  end
 
   def shutdown
     @tactics.each { |tactic| tactic.tear_down_tactic }
@@ -152,36 +189,14 @@ class TacticSolver
     [host, [ip_port, @name]]
   end
 
-  def handle_multicast_for what, data, &block
-    recipient, payload = data
-    # puts "Handling multicast. Looking for #{what}. Got payload:"
-    if payload[0] == what then
-      yield payload[1]
-    else
-      []
-    end
-  end
-
-  def link_cost l
-      10 * l.latency + 1000 / l.bandwidth + 10 * l.overhead # Find a way to compute cost...
-  end
-
   def start_tactics
     @tactics = []
     # Find and initialize all tactics
     Dir.foreach("tactics") do |dir_name|
-      @tactics << Tactic.new(dir_name, self) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
+      @tactics << Tactic.new(dir_name, ip_port) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
     end
     @tactics.each do |tactic| 
-      tactic.post_setup
+      tactic.run_bg
     end
-  end
-
-  def min a, b
-    a < b ? a : b
-  end
-
-  def max a, b
-    a < b ? b : a
   end
 end

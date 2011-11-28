@@ -55,6 +55,9 @@ The program supports the following commands:
 EOF
   end
 
+  DEFAULT_IP = "127.0.0.1"
+  DEFAULT_PORT = 56675
+
   def self.setup
     options = {}
 
@@ -68,26 +71,24 @@ EOF
     server = (RunHelper.get_input =~ /y/i) == nil ? false : true
     options[:server] = server
 
-    default_ip = "127.0.0.1"
-    default_port = 56675
     if server then
-      puts "What IP should we listen to (default: #{default_ip})"
+      puts "What IP should we listen to (default: #{RunHelper::DEFAULT_IP})"
       ip = RunHelper.get_input
-      options[:ip] = ip == "" ? default_ip : ip
+      options[:ip] = ip == "" ? RunHelper::DEFAULT_IP : ip
 
-      puts "And port? (default: #{default_port})"
+      puts "And port? (default: #{RunHelper::DEFAULT_PORT})"
       port = RunHelper.get_input
-      options[:port] = port == "" ? default_port : port.to_i
+      options[:port] = port == "" ? RunHelper::DEFAULT_PORT : port.to_i
 
       puts "#{RunHelper.happy_exclamation} #{name} will be listening on #{options[:ip]}:#{options[:port]}"
     else
-      puts "What IP should we contact the master on (default: #{default_ip})"
+      puts "What IP should we contact the master on (default: #{RunHelper::DEFAULT_IP})"
       ip = RunHelper.get_input
-      options[:ip] = ip == "" ? default_ip : ip
+      options[:ip] = ip == "" ? RunHelper::DEFAULT_IP : ip
 
-      puts "And port? (default: #{default_port})"
+      puts "And port? (default: #{RunHelper::DEFAULT_PORT})"
       port = RunHelper.get_input
-      options[:port] = port == "" ? default_port : port.to_i
+      options[:port] = port == "" ? RunHelper::DEFAULT_PORT : port.to_i
 
       puts "#{RunHelper.happy_exclamation} We will contact the master on #{options[:ip]}:#{options[:port]}"
     end
@@ -97,7 +98,15 @@ EOF
   end
 end
 
-tactic_solver = TacticSolver.new RunHelper.setup
+# Comment out options hash to get interactive mode
+# options = {:ip => RunHelper::DEFAULT_IP, :port => RunHelper::DEFAULT_PORT, :name => "default name", :server => true}
+
+tactic_solver = nil
+begin
+  tactic_solver = TacticSolver.new options
+rescue NameError
+  tactic_solver = TacticSolver.new RunHelper.setup
+end
 tactic_solver.setup_and_run
 
 input = RunHelper.get_input
@@ -106,7 +115,7 @@ while not(input =~ /exit/i)
   when /foo/
     puts "bar"
 
-  when /nodes/
+  when /n|nodes/
     tactic_solver.tick
     puts "Nodes:"
     tactic_solver.nodes.each_pair do |k,v|
@@ -125,8 +134,54 @@ while not(input =~ /exit/i)
     id = "movember"
     interface_type = "eth"
     interface_id = "eth0"
-    address = "12.0.143.20"
+    address = "127.0.0.1"
     tactic_solver.update_device id, interface_type, interface_id, address
+
+  when /ad2/
+    puts "Adding computa"
+    id = "computa"
+    interface_type = "eth"
+    interface_id = "eth0"
+    address = "12.0.1.244"
+    tactic_solver.update_device id, interface_type, interface_id, address
+
+    id = "computa"
+    interface_type = "eth"
+    interface_id = "eth1"
+    address = "12.0.1.254"
+    tactic_solver.update_device id, interface_type, interface_id, address
+
+  when /d|devices/
+    tactic_solver.tick
+    puts "Devices:"
+    tactic_solver.devices.each_pair do |k,v|
+      puts "\t#{v[0]} : #{v[1]} (#{v[2]}) -> #{v[3]}"
+    end
+
+  when /l|links/
+    tactic_solver.tick
+    puts "Links:"
+    nodes = {}
+    tactic_solver.links.each_value do |v|
+      node = v[0]
+      nodes[node] ||= []
+      nodes[node] << {
+          :to => v[1],
+          :strategy => v[2],
+          :interface => v[3],
+          :latency => v[4],
+          :bandwidth => v[5],
+          :overhead => v[6],
+          :time => v[7]
+      }
+    end
+    nodes.each_pair do |node, vals|
+      puts node
+      vals.each do |v|
+        puts "\t#{v[:to]} (#{v[:strategy]} - #{v[:interface]}): latency: #{v[:latency]}, bandwidth: #{v[:bandwidth]}, overhead: #{v[:overhead]}. Evaluated at #{v[:time]}"
+      end
+      puts ""
+    end
 
   when /tick/
     tactic_solver.tick

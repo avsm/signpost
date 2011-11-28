@@ -2,9 +2,19 @@ require 'yaml'
 
 class Tactic
   include Bud
+  include TacticProtocol
 
-  state do
-    scratch :possible_connections, [:interface, :to]
+  bootstrap do
+    tactic_signup <~ [[@tactic_solver, [ip_port, @name]]]
+  end
+
+  bloom :evaluate_tactic do
+    temp :devices_to_evaluate <= eval_tactic_request.payloads
+    with :results <= devices_to_evaluate {|d|
+      evaluate_input d
+    }, begin
+      tactic_evaluation_result <~ results {|r| [@tactic_solver, r]}
+    end
   end
   
   def initialize name, tactic_solver, options = {}
@@ -13,25 +23,6 @@ class Tactic
     @tactic_solver = tactic_solver
     setup_tactic
     super options
-  end
-
-  bloom do
-    ###
-  end
-
-  def post_setup
-    self.register_callback(:possible_connections) do |entries|
-      entries.each do |entry|
-        evaluate_input entry
-      end
-    end
-    self.run_bg
-  end
-
-  def input_to_evaluate interface, to
-    self.sync_do {
-      possible_connections <+ [[interface, to]]
-    }
   end
 
   def tear_down_tactic
@@ -74,30 +65,28 @@ class Tactic
   end
 
   def evaluate_input entry
-    if @supported_interfaces.include?(entry.interface) then
-      puts "[#{@name}]: Evaluating possibility of connecting to #{entry.to} through #{entry.interface}"
-      result = `tactics/#{@name}/#{@prober} #{entry.interface} #{entry.to}`
+    name = entry[0]
+    interface = entry[1]
+    address = entry[3]
+    if @supported_interfaces.include?(interface) then
+      puts "[#{@name}]: Evaluating possibility of connecting to #{address} through #{interface}"
+      result = `tactics/#{@name}/#{@prober} #{interface} #{address}`
       if (result =~ /SUCCESS ([\d]*) ([\d]*) ([\d]*)/) != nil
         latency = $1
         bandwidth = $2
         overhead = $3
-        data = {
-          :client => entry.to,
-          :strategy => @name,
-          :interface => entry.interface,
-          :latency => latency.to_i,
-          :bandwidth => bandwidth.to_i,
-          :overhead => overhead.to_i
-        }
-        puts "[#{@name}]: Can connect to #{entry.to} through #{entry.interface} with latency #{latency}, bandwidth #{bandwidth}."
-        @tactic_solver.update data
+        puts "[#{@name}]: Can connect to #{address} through #{interface} with " \
+            + "latency #{latency}, bandwidth #{bandwidth}."
+
+        # Returns values that can be sent back to the tactic solver
+        [@name, name, address, interface, latency, bandwidth, overhead]
 
       else
-        puts "[#{@name}]: Cannot connect to #{entry.to} through #{entry.interface}."
+        puts "[#{@name}]: Cannot connect to #{address} through #{interface}."
 
       end
     else
-      puts "[#{@name}]: Tactic does not support interface #{entry.interface}"
+      puts "[#{@name}]: Tactic does not support interface #{interface}"
     end
   end
 
