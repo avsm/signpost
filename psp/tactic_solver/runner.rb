@@ -118,8 +118,8 @@ while not(input =~ /exit/i)
   when /n|nodes/
     tactic_solver.tick
     puts "Nodes:"
-    tactic_solver.nodes.each_pair do |k,v|
-      puts "\t#{v[1]} : #{v[0]}"
+    tactic_solver.nodes.each_value do |v|
+      puts "\t#{v[1]} : #{v[0]} (#{v[2]})"
     end
 
   when /(ad|ud) ([\w\d]*) ([\w\d]*) ([\w\d]*) ([\w\.\:]*)/

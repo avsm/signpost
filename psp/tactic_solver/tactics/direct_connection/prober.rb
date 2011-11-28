@@ -2,6 +2,7 @@
 
 require 'rubygems'
 require 'socket' 
+require 'timeout'
 
 return "FAILURE" if ARGV.size < 2
 
@@ -22,26 +23,34 @@ latency = 0
 bandwidth = 0
 overhead = 0
 
-run_test host do |s|
-  # ping pong for latency
-  time_start = Time.now.to_i
-  s.puts "pingpong"
-  s.gets
-  time_stop = Time.now.to_i
-  ping_pong_time = one_way_time time_start, time_stop
-  latency = ping_pong_time
-end
+begin
+  Timeout::timeout(2*60) do
+    run_test host do |s|
+      # ping pong for latency
+      time_start = Time.now.to_i
+      s.puts "pingpong"
+      s.gets
+      time_stop = Time.now.to_i
+      ping_pong_time = one_way_time time_start, time_stop
+      latency = ping_pong_time
+    end
 
-run_test host do |s|
-  # bandwidth data
-  data = (1.upto(1_000).each.map { "****" }).flatten.to_s
-  time_start = Time.now
-  s.puts data
-  s.gets
-  time_stop = Time.now
-  bandwidth_time = one_way_time time_start, time_stop
-  bytes = data.bytes.count
-  bandwidth = bytes / bandwidth_time
-end
+    run_test host do |s|
+      # bandwidth data
+      data = (1.upto(1_000).each.map { "****" }).flatten.to_s
+      time_start = Time.now
+      s.puts data
+      s.gets
+      time_stop = Time.now
+      bandwidth_time = one_way_time time_start, time_stop
+      bytes = data.bytes.count
+      bandwidth = bytes / bandwidth_time
+    end
+  end
 
-puts "SUCCESS #{latency} #{bandwidth} #{overhead}"
+  puts "SUCCESS #{latency} #{bandwidth} #{overhead}"
+
+rescue Timeout::Error
+  puts "FAILURE"
+
+end

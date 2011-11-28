@@ -8,14 +8,49 @@ class TacticSolver
   include Bud
 
   ###############################
+  # Heartbeat ###################
+  ###############################
+  state do
+    channel :heart
+    periodic :heartbeat_timer, @heartbeat_frequency
+  end
+
+  bloom :heartbeat do
+    # Send out a heartbeat
+    heart <~ (heartbeat_timer*nodes).pairs do |hb, node|
+      [node.host, [ip_port, @name]]
+    end
+
+    # Update other nodes heartbeats
+    temp :beats <= heart.payloads
+    nodes <+- beats do |node|
+      [node[0], node[1], Time.now.to_i]
+    end
+
+    with :dead_nodes <= (heartbeat_timer*nodes).pairs { |t,n|
+      # Return all the nodes we haven't heard from for the past 20 seconds
+      n if (n.last_heartbeat < (Time.now.to_i - @heartbeat_frequency * 2))
+    }, begin
+      # Remove all dead nodes
+      nodes <- dead_nodes
+
+      # Remove all links for the dead nodes
+      links <- links {|l|
+        l if dead_nodes.exists? {|n| n.name == l.from}
+      }
+    end
+  end
+
+  ###############################
   # Signposts ###################
   ###############################
   state do
     channel :connect # For connecting to other nodes
     channel :node_discovery # For broadcasting nodes you know about
-    table :nodes, [:host] => [:name]
+    table :nodes, [:host] => [:name, :last_heartbeat]
   end
   
+
   # Handle setting up connections between signposts
   bloom :connections do
     # Information about new nodes from peers, must be dealt with
@@ -26,7 +61,7 @@ class TacticSolver
       c unless nodes.exists? {|n| n.host == c[0]}
     }, begin
       # We want to connect to nodes we haven't seen before
-      nodes <+ nodes_to_connect_to
+      nodes <+ nodes_to_connect_to {|n| [n[0], n[1], Time.now.to_i]}
       connect <~ nodes_to_connect_to {|n| connect_to n[0]}
     end
 
@@ -42,7 +77,7 @@ class TacticSolver
     end
     
     # Add nodes we don't yet know to our set of nodes
-    nodes <+ unseen_nodes
+    nodes <+ unseen_nodes {|n| [n[0], n[1], Time.now.to_i]}
 
     # Also, in order to allow a fully connected signpost graph,
     # inform the new nodes about other nodes we know about
@@ -57,9 +92,9 @@ class TacticSolver
   state do
     channel :request_device_info
     channel :serve_device_info
-    scratch :new_device, [:client_id, :interface_type, :interface_id] => [:address] # For adding devices locally
     table :devices, [:client_id, :interface_type, :interface_id] => [:address]
-    table :links, [:from, :to, :strategy, :interface] => [:latency, :bandwidth, :overhead, :time_evaluated]
+
+    scratch :new_device, [:client_id, :interface_type, :interface_id] => [:address] # For adding devices locally
   end
 
   bloom :devices do
@@ -79,6 +114,11 @@ class TacticSolver
     }
     devices <+- new_device_info
 
+    # When there is a new device, send it to the tactic testers
+    eval_tactic_request <~ (tactics*new_device_info).pairs do |t,nd|
+      [t.host, nd]
+    end
+
     # Tell all other nodes about the new device
     serve_device_info <~ (nodes*new_device).pairs do |node, device|
       [node.host, device]
@@ -92,18 +132,31 @@ class TacticSolver
   state do
     table :tactics, [:host] => [:name]
     channel :push_link
+    table :links, [:from, :to, :strategy, :interface] => [:latency, :bandwidth, :overhead, :time_evaluated]
+
+    channel :get_links
+  end
+
+  # You want to share links with other nodes
+  bloom :link_distribution do
+    temp :get_link_nodes <= get_links.payloads
+    push_link <~ (get_link_nodes * links).pairs do |node, link|
+      [node[0], link]
+    end
   end
 
   bloom :tactic_setup do
-    tactics <= tactic_signup.payloads
+    temp :new_tactics <= tactic_signup.payloads
+    # Add the tactic to the list of local tactics
+    tactics <+- new_tactics
+    
+    # When there is a new tactic, give it all the existing devices to evaluate
+    eval_tactic_request <~ (new_tactics*devices).pairs do |t,nd|
+      [t[0], nd]
+    end
   end
 
   bloom :tactize do
-    # When there is a new device, send it to the tactic testers
-    eval_tactic_request <~ (tactics*new_device_info).pairs do |t,nd|
-      [t.host, nd]
-    end
-
     temp :new_local_results <= tactic_evaluation_result.payloads
     push_link <~ (nodes*new_local_results).pairs do |n, r|
       # We get the results from the tactic solver in the following format
@@ -124,7 +177,29 @@ class TacticSolver
       [n.host, result]
     end
 
-    links <+- push_link.payloads
+    # TODO: Use version numbers for link validity check rather than timestamp
+    temp :newly_pushed_links <= push_link.payloads
+    with :newer_pushed_links <= newly_pushed_links {|l|
+      l unless links.exists? {|ol| 
+        # l = [@name, address, strategy, interface, latency, bandwidth, overhead, evaluated]
+        if (ol.from == l[0] and 
+            ol.to == l[1] and
+            ol.stragegy == l[2] and
+            ol.interface == l[3]) then
+
+          # This is a link we already have.
+          # We pretend as if we don't have it if the timestamp of the
+          # current link is newer. FIXME: Clocks not in sync...? Use version
+          # nums
+          ol.time_evaluated < l[7] 
+        else
+          # We don't have the link
+          false
+        end
+      }
+    }, begin
+      links <+- newer_pushed_links
+    end
   end
 
   ###############################
@@ -137,8 +212,9 @@ class TacticSolver
       # Connect to the main machine
       connect <~ [connect_to server] # Connect to the network
       request_device_info <~ [connect_to server] # Request information about devices
+      get_links <~ [connect_to server] # Request information about current links
     else
-      nodes <= [[ip_port, @name]]
+      nodes <= [[ip_port, @name, Time.now.to_i]]
     end
   end
 
@@ -146,6 +222,8 @@ class TacticSolver
   # Good old ruby ###############
   ###############################
   def initialize options = {}
+    @heartbeat_frequency = options.delete(:heartbeat) || 1
+
     @server_ip = options[:ip]
     @server_port = options[:port]
 

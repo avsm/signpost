@@ -1,4 +1,6 @@
 require 'yaml'
+require 'timeout'
+
 
 class Tactic
   include Bud
@@ -10,11 +12,8 @@ class Tactic
 
   bloom :evaluate_tactic do
     temp :devices_to_evaluate <= eval_tactic_request.payloads
-    with :results <= devices_to_evaluate {|d|
-      evaluate_input d
-    }, begin
-      tactic_evaluation_result <~ results {|r| [@tactic_solver, r]}
-    end
+
+    temp :ignore <= devices_to_evaluate {|d| evaluate_input d; []}
   end
   
   def initialize name, tactic_solver, options = {}
@@ -42,6 +41,7 @@ class Tactic
     @background_process = config['daemon']
     @description = config['description']
     @supported_interfaces = config['supported_interfaces']
+    @timeout = 2 * 60 # 2 minute timeout...
 
     check_file_exists @prober, @actuator
 
@@ -64,29 +64,44 @@ class Tactic
     end
   end
 
-  def evaluate_input entry
-    name = entry[0]
-    interface = entry[1]
-    address = entry[3]
-    if @supported_interfaces.include?(interface) then
-      puts "[#{@name}]: Evaluating possibility of connecting to #{address} through #{interface}"
-      result = `tactics/#{@name}/#{@prober} #{interface} #{address}`
-      if (result =~ /SUCCESS ([\d]*) ([\d]*) ([\d]*)/) != nil
-        latency = $1
-        bandwidth = $2
-        overhead = $3
-        puts "[#{@name}]: Can connect to #{address} through #{interface} with " \
-            + "latency #{latency}, bandwidth #{bandwidth}."
+  def evaluate_input data
+    Thread.new(data, self) do |entry, tactic|
+      begin
+        Timeout::timeout(@timeout) do
+          name = entry[0]
+          interface = entry[1]
+          address = entry[3]
+          if @supported_interfaces.include?(interface) then
+            puts "[#{@name}]: Evaluating possibility of connecting to #{address} through #{interface}"
+            result = `tactics/#{@name}/#{@prober} #{interface} #{address}`
+            if (result =~ /SUCCESS ([\d]*) ([\d]*) ([\d]*)/) != nil
+              latency = $1
+              bandwidth = $2
+              overhead = $3
+              puts "[#{@name}]: Can connect to #{address} through #{interface} with " \
+                  + "latency #{latency}, bandwidth #{bandwidth}."
 
-        # Returns values that can be sent back to the tactic solver
-        [@name, name, address, interface, latency, bandwidth, overhead]
+              # Returns values that can be sent back to the tactic solver
+              result = [@name, name, address, interface, latency, bandwidth, overhead]
+              self.async_do { self.tactic_evaluation_result <~ [[@tactic_solver, result]]}
+              
+            else
+              puts "[#{@name}]: Cannot connect to #{address} through #{interface}."
 
-      else
-        puts "[#{@name}]: Cannot connect to #{address} through #{interface}."
+            end # end if
+          else
+            puts "[#{@name}]: Tactic does not support interface #{interface}"
+          end # end if
+
+        end # end timeout
+
+      rescue Timeout::Error
+        print_error "Timed out when attempting to connect to #{address} through #{interface}."
+
+      rescue e
+        print_error "Failed when trying to conenct to #{address}: #{e}"
 
       end
-    else
-      puts "[#{@name}]: Tactic does not support interface #{interface}"
     end
   end
 
