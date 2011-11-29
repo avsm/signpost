@@ -5,22 +5,22 @@ module TacticSolver
 
     state do
       # These are the truths that we know
-      # We know WHERE they are valid, i.e. locally, or on host B
       # We know WHAT sort of truth they are
+      # We know WHERE they are valid, i.e. locally, or on host B
       # and we know the TRUTH itself
-      table :truths, [:where, :what] => [:truth]
+      table :truths, [:what, :where] => [:truth]
 
       # These are the truths needed
-      # We know WHO needs the truth
       # We know WHAT truth is needed
-      # and we know WHERE the truth holds, i.e. if it should be a local
+      # WHERE the truth should hold, i.e. if it should be a local
       #     truth or a truth on host B
-      table :truths_needed, [:who, :what, :where]
+      # and WHO needs the truth
+      table :truths_needed, [:what, :where] => [:who]
 
       # These are the services provided
-      # We know WHO provices the service
-      # and WHAT service they provide
-      table :providers, [:who, :what]
+      # We know WHAT services are provided
+      # and WHO provices the service
+      table :providers, [:what] => [:who]
     end
 
     def initialize options = {}
