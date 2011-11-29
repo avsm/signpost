@@ -1,8 +1,0 @@
-description: Tries to establish a direct peer-to-peer connection.
-prober: prober.rb
-actuator: actuator.rb
-daemon:
-  start: daemon.rb start
-  stop: daemon.rb stop
-supported_interfaces:
-  - eth
