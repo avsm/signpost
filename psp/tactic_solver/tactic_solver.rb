@@ -132,7 +132,9 @@ class TacticSolver
   state do
     table :tactics, [:host] => [:name]
     channel :push_link
-    table :links, [:from, :to, :strategy, :interface] => [:latency, :bandwidth, :overhead, :time_evaluated]
+    # table :devices, [:client_id, :interface_type, :interface_id] => [:address]
+    table :links, [:from, :to, :strategy, :interface] => [:latency, :bandwidth, :overhead, :ttl, :eval_length]
+    table :link_ttls, [:from, :to, :strategy, :interface] => [:expires]
 
     channel :get_links
   end
@@ -160,45 +162,79 @@ class TacticSolver
     temp :new_local_results <= tactic_evaluation_result.payloads
     push_link <~ (nodes*new_local_results).pairs do |n, r|
       # We get the results from the tactic solver in the following format
-      # STRATEGY, NAME, ADDRESS, INTERFACE, LATENCY, BANDWIDTH, OVERHEAD
+      # STRATEGY, NAME, ADDRESS, INTERFACE, LATENCY, BANDWIDTH, OVERHEAD, TTL
       strategy = r[0]
-      name = r[1]
-      address = r[2]
+      device_name = r[1]
+      address = r[2] # We don't need this atm, as it is already in the devices table
       interface = r[3]
       latency = r[4]
       bandwidth = r[5]
       overhead = r[6]
-      evaluated = Time.now.to_i
+      ttl = r[7]
+      eval_duration = r[8]
 
       # The link table format is:
-      # FROM, TO, STRATEGY, INTERFACE, LATENCY, BANDWIDTH, OVERHEAD,
-      # TIME_EVALUATED
-      result = [@name, address, strategy, interface, latency, bandwidth, overhead, evaluated]
+      # FROM, TO, STRATEGY, INTERFACE, LATENCY, BANDWIDTH, OVERHEAD, TTL,
+      # EVAL_DURACTION
+      result = [@name, device_name, strategy, interface, latency, bandwidth, overhead, ttl, eval_duration]
       [n.host, result]
     end
 
-    # TODO: Use version numbers for link validity check rather than timestamp
-    temp :newly_pushed_links <= push_link.payloads
-    with :newer_pushed_links <= newly_pushed_links {|l|
-      l unless links.exists? {|ol| 
-        # l = [@name, address, strategy, interface, latency, bandwidth, overhead, evaluated]
-        if (ol.from == l[0] and 
-            ol.to == l[1] and
-            ol.stragegy == l[2] and
-            ol.interface == l[3]) then
+    temp :failed_tactics <= failed_evaluation_result.payloads
+    link_ttls <+- failed_tactics do |ft|
+      # ft has format:
+      # STRATEGY, DEVICE_ID, INTERFACE_ID
+      strategy = ft[0]
+      device_name = ft[1]
+      interface_id = ft[2]
+      try_again_time = Time.now.to_i + 10 * 60 # Reevaluate failed tactics every 10 minutes?
+      [@name, device_name, strategy, interface_id, try_again_time]
+    end
 
-          # This is a link we already have.
-          # We pretend as if we don't have it if the timestamp of the
-          # current link is newer. FIXME: Clocks not in sync...? Use version
-          # nums
-          ol.time_evaluated < l[7] 
-        else
-          # We don't have the link
-          false
-        end
-      }
-    }, begin
-      links <+- newer_pushed_links
+    temp :newly_pushed_links <= push_link.payloads
+    links <+- newly_pushed_links
+    link_ttls <+- newly_pushed_links do |l|
+      # If it is a link that is from this signpost node, then we want to
+      # reevaluate it before it expires to make sure we have good link coverage
+      if (l[0] == @name) then
+        [l[0], l[1], l[2], l[3], Time.now.to_i + l[7] - l[8] - 1]
+      else
+        [l[0], l[1], l[2], l[3], Time.now.to_i + l[7]]
+      end
+    end
+  end
+
+  state do
+    periodic :ttl_checker, 2
+  end
+
+  bloom :remove_expired_links do
+    # The ttl entries for the links that have expired in this cycle
+    temp :ttled_links <= (ttl_checker*link_ttls).pairs {|t, lttl| lttl if lttl.expires < Time.now.to_i}
+
+    # Remove ttl entries for expired links
+    link_ttls <- ttled_links
+
+    # Remove links for the expired ttl entries
+    temp :expired_links <= (ttled_links*links).pairs do |lttl, link|
+      if (link.from == lttl.from and
+          link.to == lttl.to and
+          link.strategy == lttl.strategy and
+          link.interface == lttl.interface) then
+        link
+      end
+    end
+
+    # Remove expired links
+    links <- expired_links
+    
+    # Links we need to reevaluate
+    eval_tactic_request <~ (tactics*ttled_links*devices).pairs do |t,lttl,device|
+      # Reevaluate all expired links originating from this signpost node
+      [t[0], device] if (lttl.to == device.client_id and 
+                         lttl.interface == device.interface_id and 
+                         lttl.from == @name and # only the link starts from this node
+                         lttl.strategy == t.name) # only for the the tactic that generated the link
     end
   end
 

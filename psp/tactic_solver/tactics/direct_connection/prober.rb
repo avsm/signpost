@@ -22,6 +22,7 @@ end
 latency = 0
 bandwidth = 0
 overhead = 0
+ttl = 60
 
 begin
   Timeout::timeout(2*60) do
@@ -48,7 +49,7 @@ begin
     end
   end
 
-  puts "SUCCESS #{latency} #{bandwidth} #{overhead}"
+  puts "SUCCESS #{latency} #{bandwidth} #{overhead} #{ttl}"
 
 rescue Timeout::Error
   puts "FAILURE"

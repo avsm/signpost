@@ -42,13 +42,14 @@ if the tactic doesn't apply
 
 or
 
-  SUCCESS LATENCY BANDWIDTH OVERHEAD
+  SUCCESS LATENCY BANDWIDTH OVERHEAD TTL
 
 Where:
 
 * Latency is the latency that can be expected
 * Bandwidth is the estimated avilable bandwidht
 * Overhead is the number of bytes that are added to data packets
+* TTL is the number of seconds before the tactic should be reevaluated
 
 
 ## ACTUATING_EXECUTABLE

@@ -12,7 +12,6 @@ puts "\n"
 
 class RunHelper
   def self.get_input
-    print "> "
     gets.strip.chomp
   end
 
@@ -172,13 +171,13 @@ while not(input =~ /exit/i)
           :latency => v[4],
           :bandwidth => v[5],
           :overhead => v[6],
-          :time => v[7]
+          :ttl => v[7]
       }
     end
     nodes.each_pair do |node, vals|
       puts node
       vals.each do |v|
-        puts "\t#{v[:to]} (#{v[:strategy]} - #{v[:interface]}): latency: #{v[:latency]}, bandwidth: #{v[:bandwidth]}, overhead: #{v[:overhead]}. Evaluated at #{v[:time]}"
+        puts "\t#{v[:to]} (#{v[:strategy]} - #{v[:interface]}): latency: #{v[:latency]}, bandwidth: #{v[:bandwidth]}, overhead: #{v[:overhead]}. TTL #{v[:ttl]}"
       end
       puts ""
     end
