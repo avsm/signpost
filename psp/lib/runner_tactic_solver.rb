@@ -36,18 +36,18 @@ Shortcuts:
   c1: shortcut for "I want a connection to localhost"
   c2: shortcut for "I want a connection to localhost through port 8080"
   c3: shortcut for "I want to ssh to nf-test109.cl.cam.ac.uk through port 22"
+
+
 EOF
   end
 end
 
 tactic_solver = TacticSolver::Solver.new
-tactic_solver.setup_and_run
 
 input = RunHelper.get_input
 while not(input =~ /exit/i)
   case input
   when /I want (a|to) ([\w\d]*) (in)?to ([\w\d\.\-\_\:\@]*)( through port ([\d]*))?/
-    puts "Something worked out"
     what = $2
     to = $4
     port = $6
@@ -61,9 +61,6 @@ while not(input =~ /exit/i)
 
   when /c3/
     tactic_solver.resolve "ssh", "nf-test109.cl.cam.ac.uk", 22
-
-  when /I want (a|to) ([\.^ ]*) (in)?to ([\.^ ]*)( through port ([\d]*))?/
-    puts "Something worked out"
 
   else
     RunHelper.print_help

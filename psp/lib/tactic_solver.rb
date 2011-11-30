@@ -15,6 +15,8 @@ require 'thread'
 
 $:.unshift File.dirname(__FILE__)
 
+require 'tactic_solver/tactic_protocol'
+require 'tactic_solver/tactic'
 require 'tactic_solver/solver'
 
 module TacticSolver
