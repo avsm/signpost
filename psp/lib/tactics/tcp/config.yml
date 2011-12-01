@@ -1,10 +1,7 @@
 name: tcp
 description: Evaluated if a TCP connection can be opened between two devices
 provides:
-  tcp_(in|out)_([\d]*)@local:
-    arguments:
-      - destination
-      - port
+  - tcp_(in|out)@local:([\d]*)
 requires:
   # has no requirements
 # The tactic doesn't need to be reevaluated for a truth to be true

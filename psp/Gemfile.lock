@@ -4,6 +4,11 @@ GIT
   specs:
     net-dns (0.6.1)
 
+GIT
+  remote: https://github.com/seattlerb/zentest.git
+  revision: 8cbc2a629c8e1eb17762df764e84532f2a9c2bc5
+  specs:
+
 GEM
   remote: http://rubygems.org/
   specs:
@@ -44,6 +49,7 @@ GEM
     json (1.6.1)
     macaddr (1.5.0)
       systemu (>= 2.4.0)
+    minitest (2.8.1)
     msgpack (0.4.6)
     multi_json (1.0.3)
     nestful (0.0.7)
@@ -81,9 +87,11 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  ZenTest!
   bud
   daemons
   json
+  minitest
   net-dns!
   rubydns
   sinatra

@@ -7,5 +7,6 @@ module TacticProtocol
     # Format of data on the wire
     scratch :need_truth_scratch, [:what, :who] => [:who_name]
     scratch :needed_truth_scratch, [:what, :provider] => [:truth]
+    scratch :provice_truth_scratch, [:what, :provider] => [:truth]
   end
 end

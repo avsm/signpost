@@ -21,7 +21,11 @@ TacticSolver help
 
 To exit type 'exit'
 
-To run the tactic solver, type in something of the form
+Supported calls:
+
+  (r|resolve) truth
+
+or 'free text' entries like:
 
 I want (a|to) WHAT (in)to WHERE [through port PORT]
 
@@ -36,6 +40,7 @@ Shortcuts:
   c1: shortcut for "I want a connection to localhost"
   c2: shortcut for "I want a connection to localhost through port 8080"
   c3: shortcut for "I want to ssh to nf-test109.cl.cam.ac.uk through port 22"
+  c4: shortcut for "resolve tcp_in@localhost:8000"
 
 
 EOF
@@ -51,16 +56,24 @@ while not(input =~ /exit/i)
     what = $2
     to = $4
     port = $6
-    tactic_solver.resolve what, to, port.to_i
+    tactic_solver.resolve "#{what}@#{to}:#{port.to_i}"
 
   when /c1/
-    tactic_solver.resolve "connection", "localhost"
+    tactic_solver.resolve "connection@localhost"
 
   when /c2/
-    tactic_solver.resolve "connection", "localhost", 8080
+    tactic_solver.resolve "connection@localhost:8080"
 
   when /c3/
-    tactic_solver.resolve "ssh", "nf-test109.cl.cam.ac.uk", 22
+    tactic_solver.resolve "ssh@nf-test109.cl.cam.ac.uk:22"
+
+  when /c4/
+    tactic_solver.resolve "tcp_in@localhost:8000"
+
+  when /(r|resolve) ([[:graph:]]*)/
+    what = $2
+    puts "Should resolve #{what}"
+    tactic_solver.resolve what
 
   else
     RunHelper.print_help

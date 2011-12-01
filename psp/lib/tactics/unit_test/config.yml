@@ -1,0 +1,13 @@
+name: test_tactic
+description: Tactic for testing purposes
+provides:
+  - unit_testing@local:8080
+requires:
+  # Truths are specified as truth@location
+  # Capital segments in truths are mapped against arguments
+  - test_Destination@Destination 
+  - test_Port@local
+  - test_Domain@local:Port
+  - test_Resource@Destination
+has_dynamic_requirements: false
+executable: unit_test.rb

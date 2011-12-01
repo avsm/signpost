@@ -29,17 +29,20 @@ module TacticSolver
       truth_subscribers <+- need_truth_scratch
 
       # Let's see if we can satisfy the truths directly from our truth cache
-      satisfiable_truth_needs <= (truths*need_truth_scratch).pairs(:what => :what) {|t, nt| [nt.who, t.what, t]}
+      satisfiable_truth_needs <= (truths*need_truth_scratch).
+          pairs(:what => :what) {|t, nt| [nt.who, t.what, t]}
       needed_truth <~ satisfiable_truth_needs {|stn| [stn.who, stn.truth]}
 
       # Find needs that we cannot satisfy, and register them
       temp :dev_null <= need_truth_scratch do |nt|
-        explore_truth_space_for nt.what unless satisfiable_truth_needs.exists? {|s| s.what == nt.what}
+        explore_truth_space_for nt.what unless satisfiable_truth_needs.exists? {|s|
+          s.what == nt.what
+        }
       end
     end
 
     bootstrap do
-      truths <= [["tcp_in_8000@localhost", "global_truth", true]]
+      truths <= [["tcp_in@localhost:8000", "global_truth", true]]
     end
 
     def initialize options = {}
@@ -48,10 +51,19 @@ module TacticSolver
       self.run_bg
     end
 
-    def resolve what, address, port = 8000
-      puts "Will try to resolve a #{what} to #{address}#{port ? ":#{port}" : ""}"
-      tactic = Tactic.new "direct_connection", ip_port
-      tactic.execute what, address, port
+    def resolve what
+      puts "Attempting to resolve '#{what}'"
+      question = Question.new what, ip_port do |truths|
+        puts "QUESTION #{what}"
+        truths.to_a.each do |truth|
+          truth_name, who, answer = truth
+          puts "ANSWER:"
+          puts "\ttruth: #{truth_name}"
+          puts "\tprovider: #{who}"
+          puts "\tdata: #{answer}"
+        end
+        question.stop
+      end
 
     end
 
@@ -64,10 +76,9 @@ module TacticSolver
       @tactics.each do |tactic|
         tactic[:provides].each do |thing|
           if thing.match(what) then
-            # tactic = Tactic.new tactic[:name], ip_port
-            stdio <~ [["#{what} is provided by #{tactic[:name]}"]]
-          else
-            stdio <~ [["#{what} is NOT provided by #{tactic[:name]}"]]
+            stdio <~ [["[#{tactic[:name]}] provides #{what}"]]
+            tactic = Tactic.new tactic[:name], ip_port
+            tactic.execute what
           end
         end
       end
@@ -80,7 +91,6 @@ module TacticSolver
       Dir.foreach("tactics") do |dir_name|
         @tactics << (Tactic.provides dir_name) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
       end
-      pp @tactics
     end
   end
 end

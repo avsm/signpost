@@ -8,14 +8,11 @@ provides:
   #   tcp_in_8000@local
   #   tcp_out_12323@local
   #   ... etc
-  connection:
-    arguments:
-      - destination
-      - port
+  - connection@([\w\d\-\_]*)(:[\d]*)
 requires:
   # Truths are specified as truth@location
   # Capital segments in truths are mapped against arguments
-  - tcp_in_Port@Destination 
-  - tcp_out_Port@local
+  - tcp_in@Destination
+  - tcp_out@Local:Port
 has_dynamic_requirements: true
 executable: connection.rb
