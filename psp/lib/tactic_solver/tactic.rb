@@ -1,5 +1,6 @@
 require 'yaml'
 require 'timeout'
+require 'open3'
 
 module TacticSolver
   class FailedTactic < Exception
@@ -19,26 +20,14 @@ module TacticSolver
 
     state do
       table :parameters, [:what, :provider] => [:value]
-      table :needed_parameters, [:what] => [:requested]
     end
 
     bloom :parameters do
-      # Request all needed truths
-      need_truth <~ needed_parameters {|p|
-        [@solver, [p.what, ip_port, @name]] unless p.requested
-      }
-      # Mark the parameters as requested
-      needed_parameters <+- needed_parameters {|p|
-        [p.what, true] unless p.requested
-      }
-
       needed_truth_scratch <= needed_truth.payloads
-      # Update the parameter
-      parameters <+- (needed_parameters*needed_truth_scratch).
-          pairs(:what => :what) {|p,t| [p.what, t.provider, t.truth]}
-      # Mark the parameter as no longer needed
-      needed_parameters <- (needed_truth_scratch*needed_parameters).
-          pairs(:what => :what) {|nts, np| np}
+      # Pass the parameter to the tactic program
+      stdio <~ needed_truth_scratch do |t|
+        [["Got truth: #{t}"]]
+      end
     end
 
     def initialize dir_name, solver, options = {}
@@ -67,10 +56,11 @@ module TacticSolver
 
       # Add all known data into the bloom system to bootstrap the resolution
       # process
-      add_truth "port", "initial_value", @port
-      add_truth "destination", "initial_value", @destination
-      add_truth "domain", "initial_value", @domain
-      add_truth "resource", "initial_value", @resource
+      pass_on_truth "what", "initial_value", what
+      pass_on_truth "port", "initial_value", @port
+      pass_on_truth "destination", "initial_value", @destination
+      pass_on_truth "domain", "initial_value", @domain
+      pass_on_truth "resource", "initial_value", @resource
 
       # Find what the tactic requires
       needed_parameters = requirements @requires
@@ -91,29 +81,33 @@ module TacticSolver
 
     end
 
-  private
-    # def add_truth truth, value
-    #   if data[:new_truths] then
-    #     new_truths = data[:new_truths]
-    #     self.async_do {
-    #       self.provide_truth <~ new_truths.map {|t|
-    #         [@solver, [t[:what], @name, t[:value]]]
-    #       }
-    #     }
-    #   end
-    # end
+    def shut_down
+      self.stop
+      # @io.close
+      @io_in.close if @io_in
+      @io_out.close if @io_out
+      @io_err.close if @io_err
+      @thread_out.terminate
+      @thread_err.terminate
+    end
 
-    def add_truth truth, source, value
-      self.async_do {
-        # The magic values
-        self.parameters <+ [[truth, source, value]]
+  private
+    def add_truth truth, value
+      self.async_do {self.provide_truth <~ [[@solver, [truth, @name, value]]]}
+    end
+
+    def pass_on_truth truth, source, value
+      new_truth = {
+        :what => truth,
+        :source => source,
+        :value => value
       }
+      data = {:truths => [new_truth]}
+      @io_in.puts data.to_json
     end
 
     def add_requirement requirement
-      self.async_do {
-        self.needed_parameters <+ [[requirement, false]]
-      }
+      self.async_do {self.need_truth <~ [[@solver, [requirement, ip_port, @name]]]}
     end
 
     def requirements requires
@@ -167,23 +161,35 @@ module TacticSolver
 
     def start_program
       # Start the program
-      @io = IO.popen("#{@tactic_folder}/#{@executable}")
-      @io_thread = Thread.new(@io) do |io|
-        keep_on_running = true
-        while keep_on_running
+      @io_in, @io_out, @io_err = Open3.popen3("#{@tactic_folder}/#{@executable}")
+      @io_in.sync = true
+
+      @thread_out = Thread.new(@io_out, self) do |out, tactic|
+        while true
           begin
-            json_from_program = io.readline
+            json_from_program = out.gets
             data = JSON.parse(json_from_program)
 
-            keep_on_running = false if data[:terminate]
-
-            deal_with data
+            tactic.deal_with data
 
           rescue e
-            print_error "got malformed response from process."
+            puts "ERROR [#{@name}]: got malformed response from process."
+
           end
         end
-        io.close()
+      end
+
+      @thread_err = Thread.new(@io_err) do |err|
+        while true
+          begin
+            error_text = err.gets
+            puts "STDERR [#{@name}] : #{error_text}" unless error_text.strip.chomp == ""
+
+          rescue e
+            puts "ERROR [#{@name}]: reading error in STDERR reading thread for #{@name}"
+
+          end
+        end
       end
     end
 
@@ -200,30 +206,25 @@ module TacticSolver
     end
 
     def print_error description
-      Tactic.print_error description
+      Tactic.print_error @name, description
     end
 
-    def deal_with data
-      print_status "Dealing with data: #{data}"
 
+  public
+    def deal_with data
       # Providing new thruths back to the system
-      if data[:new_truths] then
-        new_truths = data[:new_truths]
-        self.async_do {
-          self.provide_truth <~ new_truths.map {|t|
-            [@solver, [t[:what], @name, t[:value]]]
-          }
-        }
+      if data["provide_truths"] then
+        new_truths = data["provide_truths"]
+        new_truths.each {|truth| add_truth truth["what"], truth["value"]}
       end
 
       # Requesting more truth data
-      data[:needed_truths].each {|nd| add_requirement nd} if data[:needed_truths]
+      # data[:need_truths].each {|nd| add_requirement nd} if data[:need_truths]
     end
 
-  public
-    def self.print_error description
-      puts "ERROR [#{@name}]: #{description}"
-      raise FailedTactic.new @name, description
+    def self.print_error name, description
+      puts "ERROR [#{name}]: #{description}"
+      raise FailedTactic.new name, description
     end
   end
 end

@@ -39,6 +39,17 @@ module TacticSolver
           s.what == nt.what
         }
       end
+
+      provide_truth_scratch <= provide_truth.payloads
+      truths <= provide_truth_scratch
+      needed_truth <~ (provide_truth_scratch*truth_subscribers).pairs(:what => :what) do |p,t|
+        [t.who, p]
+      end
+
+      truths <= provide_truth.payloads
+
+      # stdio <~ truths.inspected
+      # stdio <~ truth_subscribers.inspected
     end
 
     bootstrap do

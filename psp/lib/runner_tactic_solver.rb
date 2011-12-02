@@ -68,7 +68,10 @@ while not(input =~ /exit/i)
     tactic_solver.resolve "ssh@nf-test109.cl.cam.ac.uk:22"
 
   when /c4/
-    tactic_solver.resolve "tcp_in@localhost:8000"
+    tactic_solver.resolve "tcp_in@local:8000"
+
+  when /c5/
+    tactic_solver.resolve "tcp_out@local:8000"
 
   when /(r|resolve) ([[:graph:]]*)/
     what = $2
