@@ -18,6 +18,8 @@ module TacticSolver
     include Bud
     include TacticProtocol
 
+    #---------------------------
+
     state do
       table :parameters, [:what, :provider] => [:value]
     end
@@ -30,8 +32,11 @@ module TacticSolver
       end
     end
 
-    def initialize dir_name, solver, options = {}
+    #---------------------------
+    
+    def initialize dir_name, solver, node_name, options = {}
       @dir_name = dir_name
+      @node_name = node_name
       @tactic_folder = File.join(File.dirname(__FILE__), "..", 
           "tactics/#{@dir_name}")
       @solver = solver
@@ -44,7 +49,20 @@ module TacticSolver
       self.run_bg
     end
 
+    def shut_down
+      self.stop
+      @io_in.close if @io_in
+      @io_out.close if @io_out
+      @io_err.close if @io_err
+      @thread_out.terminate
+      @thread_err.terminate
+    end
+
+    #---------------------------
+
     def execute what
+      start_program
+
       set_the_magic_variables what
 
       # Do we provide what is required?
@@ -81,19 +99,45 @@ module TacticSolver
 
     end
 
-    def shut_down
-      self.stop
-      # @io.close
-      @io_in.close if @io_in
-      @io_out.close if @io_out
-      @io_err.close if @io_err
-      @thread_out.terminate
-      @thread_err.terminate
+    def deal_with data
+      # Providing new thruths back to the system
+      if data["provide_truths"] then
+        new_truths = data["provide_truths"]
+        new_truths.each {|truth| add_truth truth["what"], truth["value"]}
+      end
+
+      # Requesting more truth data
+      if data["need_truths"] then
+        needs = data["need_truths"]
+        needs.each {|nd| add_requirement need_from nd}
+      end
+    end
+
+    def self.print_error name, description
+      puts "ERROR [#{name}]: #{description}"
+      raise FailedTactic.new name, description
     end
 
   private
+    def need_from data
+      what = data["what"]
+      if data["destination"] then
+        "#{what}@#{data["destination"]}"
+      elsif data["domain"] and data["port"] then
+        "#{what}@#{data["domain"]}:#{data["port"]}"
+      elsif data["domain"] then
+        "#{what}@#{data["domain"]}"
+      elsif data["port"] then
+        "#{what}@#{@domain}:#{data["port"]}"
+      else
+        "#{what}@#{@destination}"
+      end
+    end
+
     def add_truth truth, value
-      self.async_do {self.provide_truth <~ [[@solver, [truth, @name, value]]]}
+      self.async_do {
+        self.provide_truth <~ [[@solver, [truth, @name, value]]]
+      }
     end
 
     def pass_on_truth truth, source, value
@@ -107,7 +151,9 @@ module TacticSolver
     end
 
     def add_requirement requirement
-      self.async_do {self.need_truth <~ [[@solver, [requirement, ip_port, @name]]]}
+      self.async_do {
+        self.need_truth <~ [[@solver, [requirement, ip_port, @name]]]
+      }
     end
 
     def requirements requires
@@ -150,8 +196,6 @@ module TacticSolver
       @executable = config['executable']
 
       check_file_exists @executable
-
-      start_program
 
     rescue Errno::ENOENT
       Tactic.print_error "Missing configuration file: " \
@@ -209,22 +253,5 @@ module TacticSolver
       Tactic.print_error @name, description
     end
 
-
-  public
-    def deal_with data
-      # Providing new thruths back to the system
-      if data["provide_truths"] then
-        new_truths = data["provide_truths"]
-        new_truths.each {|truth| add_truth truth["what"], truth["value"]}
-      end
-
-      # Requesting more truth data
-      # data[:need_truths].each {|nd| add_requirement nd} if data[:need_truths]
-    end
-
-    def self.print_error name, description
-      puts "ERROR [#{name}]: #{description}"
-      raise FailedTactic.new name, description
-    end
   end
 end

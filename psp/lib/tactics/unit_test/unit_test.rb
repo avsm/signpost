@@ -8,6 +8,15 @@ require 'json/ext'
 $stdout.sync = true
 $stderr.sync = true
 
+# Express a need
+need1 = {:what => "unit_test_need"}
+need2 = {:what => "unit_test_need", :domain => "domainA"}
+need3 = {:what => "unit_test_need", :destination => "domainB:30"}
+need4 = {:what => "unit_test_need", :domain => "domainC", :port => 40}
+  
+needs = {:need_truths => [need1, need2, need3, need4]}
+$stdout.puts needs.to_json
+
 should_run = true
 while should_run
   value = $stdin.readline("\n")

@@ -11,13 +11,13 @@ class TestSolver
   end
 
   state do
-    table :data
+    table :needs
     table :truths
   end
 
   bloom :receive_need do
     need_truth_scratch <= need_truth.payloads
-    data <= need_truth_scratch
+    needs <= need_truth_scratch
 
     provide_truth_scratch <= provide_truth.payloads
     truths <= provide_truth_scratch
@@ -27,11 +27,11 @@ end
 class TestTactic < MiniTest::Unit::TestCase
   def setup
     @solver = TestSolver.new
-    @tactic = TacticSolver::Tactic.new "unit_test", @solver.ip_port
+    @tactic = TacticSolver::Tactic.new "unit_test", 
+        @solver.ip_port, "node_name"
   end
 
   def teardown
-    @tactic.shut_down
     @solver.stop
   end
 
@@ -80,6 +80,8 @@ class TestTactic < MiniTest::Unit::TestCase
     # In order to test it, we therefore pass some truths on to the tactic,
     # and verify that they appear in the solver as truths
 
+    @tactic.execute "unit_testing@local:8080"
+
     truth_source = "unit_testing_truth"
 
     truth = "a_truth"
@@ -92,25 +94,40 @@ class TestTactic < MiniTest::Unit::TestCase
 
     @tactic.tick
 
-    sleep(0.3)
+    sleep(1)
 
     # The test_unit tactic should have changed the source of the truth
     # to be itself. We therefore have to make sure the original truth source
     # is not the same as the tactic name
     name = @tactic.instance_variable_get("@name")
-    assert truth_source != name, "Tactic name should not be the same as original truth source"
+    assert truth_source != name, 
+        "Tactic name should not be the same as original truth source"
 
     # The test unit will have passed the truth back into the solver
-    truths = @solver.truths.to_a
+    truths = @solver.truths
 
-    t = truths[0]
-    assert_equal truth, t[0]
-    assert_equal name, t[1]
-    assert_equal [value], t[2]
-    t = truths[1]
-    assert_equal other_truth, t[0]
-    assert_equal name, t[1]
-    assert_equal [other_value], t[2]
+    assert_is_true truths, truth, name, value
+    assert_is_true truths, other_truth, name, other_value
+
+    @tactic.shut_down
+  end
+
+  def test_tactic_expresses_needs
+    # This test relies on the unit test tactic expression
+    # a certain need. The need is then tested for in the 
+    # solver
+
+    @tactic.execute "unit_testing@local:8080"
+    sleep(2)
+
+    name = @tactic.instance_variable_get("@name")
+
+    # The test unit will have passed the truth back into the solver
+    needs = @solver.needs
+    assert_needs needs, "unit_test_need@local:8080"
+    assert_needs needs, "unit_test_need@domainA"
+    assert_needs needs, "unit_test_need@domainB:30"
+    assert_needs needs, "unit_test_need@domainC:40"
   end
 
   # The tactics should be able to contribute truths back to the solver
@@ -122,17 +139,13 @@ class TestTactic < MiniTest::Unit::TestCase
     other_value = "other_truth_value"
     @tactic.send(:add_truth, other_truth, other_value)
     @tactic.tick
-    sleep(0.1)
-    truths = @solver.truths.to_a
+    sleep(1)
+
+    truths = @solver.truths
     name = @tactic.instance_variable_get("@name")
-    t = truths[0]
-    assert_equal truth, t[0]
-    assert_equal name, t[1]
-    assert_equal [value], t[2]
-    t = truths[1]
-    assert_equal other_truth, t[0]
-    assert_equal name, t[1]
-    assert_equal [other_value], t[2]
+
+    assert_is_true truths, truth, name, value
+    assert_is_true truths, other_truth, name, other_value
   end
 
   # The requirement should be added to the main solver
@@ -142,7 +155,7 @@ class TestTactic < MiniTest::Unit::TestCase
     @tactic.send(:add_requirement, truth)
     @tactic.send(:add_requirement, other_truth)
     sleep(0.1) # UGLY! We need to wait so that the data can propagate through bud
-    data = @solver.data
+    data = @solver.needs
     assert_needs data, truth
     assert_needs data, other_truth
   end
@@ -161,10 +174,11 @@ class TestTactic < MiniTest::Unit::TestCase
     assert_raises (TacticSolver::FailedTactic) do
       @tactic.execute "unsupported_unit_testing@local:8080"
     end
+    @tactic.shut_down
   end
 
   def test_execute_supported_resource
-    # The unit test thing should support
+    # The unit test tactic should support
     # - unit_testing@local:8080
     #
     # It requires
@@ -174,20 +188,52 @@ class TestTactic < MiniTest::Unit::TestCase
     # - test_Resource@Destination
 
     @tactic.execute "unit_testing@local:8080"
-    @tactic.tick
+    sleep(1)
 
     # The unit_test tactic passes all its truths back to
     # the main repo.
     # Check that we got it back.
-    # np = @tactic.needed_parameters
-    # assert_needs np, "test_local:8080@local:8080"
-    # assert_needs np, "test_8080@local"
-    # assert_needs np, "test_local@local:8080"
-    # assert_needs np, "test_unit_testing@local:8080"
+    np = @solver.needs
+    assert_needs np, "test_local:8080@local:8080"
+    assert_needs np, "test_8080@local"
+    assert_needs np, "test_local@local:8080"
+    assert_needs np, "test_unit_testing@local:8080"
+    @tactic.shut_down
+  end
+
+  def test_need_from_data
+    @tactic.execute "unit_testing@local:8080"
+    sleep(1)
+
+    d = {"what" => "hello"}
+    assert_equal "hello@local:8080", @tactic.send(:need_from, d),
+        "Should default to the same destination"
+
+    d = {"what" => "hello", "destination" => "awesome:80"}
+    assert_equal "hello@awesome:80", @tactic.send(:need_from, d)
+
+    d = {"what" => "hello", "domain" => "kle.io"}
+    assert_equal "hello@kle.io", @tactic.send(:need_from, d)
+
+    d = {"what" => "hello", "port"=>3}
+    assert_equal "hello@local:3", @tactic.send(:need_from, d),
+        "Should default to the same domain, if domain isn't given"
+
+    d = {"what" => "hello", "domain" => "kle.io", "port"=>3}
+    assert_equal "hello@kle.io:3", @tactic.send(:need_from, d)
   end
 
 private
+  def assert_is_true p, what, source, value
+    assert_equal 1, (p.to_a.select {|t| 
+      t[0] == what and
+      t[1] == source and
+      t[2] == [value]
+    }).size, "Should have a truth for #{what}"
+  end
+
   def assert_needs p, what
-    assert (p.to_a.select {|t| t[0] == what}).size == 1, "Should have #{what} added as a need"
+    assert_equal 1, (p.to_a.select {|t| t[0] == what}).size,
+        "Should have #{what} added as a need"
   end
 end

@@ -56,7 +56,8 @@ module TacticSolver
       truths <= [["tcp_in@localhost:8000", "global_truth", true]]
     end
 
-    def initialize options = {}
+    def initialize node_name = "default_node_name", options = {}
+      @name = node_name
       learn_about_tactics
       super options
       self.run_bg
@@ -88,7 +89,7 @@ module TacticSolver
         tactic[:provides].each do |thing|
           if thing.match(what) then
             stdio <~ [["[#{tactic[:name]}] provides #{what}"]]
-            tactic = Tactic.new tactic[:name], ip_port
+            tactic = Tactic.new tactic[:name], ip_port, @name
             tactic.execute what
           end
         end
