@@ -129,7 +129,7 @@ module TacticSolver
       ({"Local" => node_name}).each_pair do |arg, val|
          prov.gsub!(arg, val)
       end
-      "^#{prov}"
+      prov
     end
 
     def deal_with_magic provision

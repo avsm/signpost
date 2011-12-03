@@ -74,7 +74,11 @@ module TacticSolver
           puts "ANSWER:"
           puts "\ttruth: #{truth_name}"
           puts "\tprovider: #{who}"
-          puts "\tdata: #{answer}"
+          if answer.class == Array then
+            puts "\tdata: #{answer.join(", ")}"
+          else
+            puts "\tdata: #{answer}"
+          end
         end
         question.stop
       end

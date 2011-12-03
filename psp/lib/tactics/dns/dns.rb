@@ -9,10 +9,12 @@ tactic = TacticHelper.new
 
 tactic.when do |helper, truths|
   packet = Net::DNS::Resolver.start(truths[:domain][:value])
+  ips = []
   packet.each_address do |ip|
-    # provide_truth: TRUTH, VALUE, CACHEABLE(boolean)
-    helper.provide_truth truths[:what][:value], ip, true
+    ips << ip
   end
+  # provide_truth: TRUTH, VALUE, CACHEABLE(boolean)
+  helper.provide_truth truths[:what][:value], ips, true
   helper.terminate_tactic
   
 end
