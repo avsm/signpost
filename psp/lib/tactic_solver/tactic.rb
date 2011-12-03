@@ -164,7 +164,7 @@ module TacticSolver
         adapted_requirement = requirement
         ({"Port" => @port, "Destination" => @destination,
          "Domain" => @domain, "Resource" => @resource,
-         "Local" => "local"}).each_pair do |arg, val|
+         "Local" => @node_name}).each_pair do |arg, val|
           while (adapted_requirement =~ 
               /([\w\d@\-\_\.\:]*)#{arg.capitalize}([\w\d@\-\_\.\:]*)/)
             adapted_requirement = "#{$1}#{val}#{$2}"

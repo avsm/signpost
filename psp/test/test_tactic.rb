@@ -57,6 +57,9 @@ class TestTactic < MiniTest::Unit::TestCase
     # Destination = domain:8080
     # Port = 8080
 
+    res = @tactic.send(:requirements, ["tcp_out@Local"]).first
+    assert_equal "tcp_out@node_name", res
+
     res = @tactic.send(:requirements, ["tcp_out@Destination"]).first
     assert_equal "tcp_out@domain:8080", res
 
@@ -165,6 +168,7 @@ class TestTactic < MiniTest::Unit::TestCase
     # - unit_testing@local:8080
     #
     # It requires
+    # - test_cause@Local 
     # - test_Destination@Destination 
     # - test_Port@local
     # - test_Domain@local:Port
@@ -182,6 +186,7 @@ class TestTactic < MiniTest::Unit::TestCase
     # - unit_testing@local:8080
     #
     # It requires
+    # - test_cause@Local 
     # - test_Destination@Destination 
     # - test_Port@local
     # - test_Domain@local:Port
@@ -194,6 +199,7 @@ class TestTactic < MiniTest::Unit::TestCase
     # the main repo.
     # Check that we got it back.
     np = @solver.needs
+    assert_needs np, "test_cause@node_name"
     assert_needs np, "test_local:8080@local:8080"
     assert_needs np, "test_8080@local"
     assert_needs np, "test_local@local:8080"

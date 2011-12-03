@@ -5,6 +5,7 @@ provides:
 requires:
   # Truths are specified as truth@location
   # Capital segments in truths are mapped against arguments
+  - test_cause@Local 
   - test_Destination@Destination 
   - test_Port@local
   - test_Domain@local:Port
