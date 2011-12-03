@@ -4,11 +4,6 @@ GIT
   specs:
     net-dns (0.6.1)
 
-GIT
-  remote: https://github.com/seattlerb/zentest.git
-  revision: 8cbc2a629c8e1eb17762df764e84532f2a9c2bc5
-  specs:
-
 GEM
   remote: http://rubygems.org/
   specs:
@@ -87,7 +82,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  ZenTest!
+  ZenTest
   bud
   daemons
   json

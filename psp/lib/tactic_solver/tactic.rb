@@ -45,7 +45,6 @@ module TacticSolver
       setup_tactic
 
       super options
-
       self.run_bg
     end
 
@@ -70,7 +69,11 @@ module TacticSolver
       @provides.each do |provide|
         does_provide_what = true if what =~ /^#{provide}/
       end
-      print_error "does not provide #{what}" unless does_provide_what
+      unless does_provide_what then
+        puts "[#{@name}] does not provide #{what}" 
+        shut_down
+        return
+      end
 
       # Add all known data into the bloom system to bootstrap the resolution
       # process
@@ -126,7 +129,7 @@ module TacticSolver
       ({"Local" => node_name}).each_pair do |arg, val|
          prov.gsub!(arg, val)
       end
-      prov
+      "^#{prov}"
     end
 
     def deal_with_magic provision

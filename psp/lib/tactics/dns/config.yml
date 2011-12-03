@@ -1,0 +1,7 @@
+name: dns
+description: Provides non-signpost DNS resolution. Only returns an IP rather than full records
+provides:
+  - ip_for_domain@([[:graph:]]*)
+requires:
+  # has no requirements
+executable: dns.rb
