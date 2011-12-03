@@ -92,7 +92,7 @@ class TestTactic < MiniTest::Unit::TestCase
 
     @tactic.tick
 
-    sleep(0.1)
+    sleep(0.3)
 
     # The test_unit tactic should have changed the source of the truth
     # to be itself. We therefore have to make sure the original truth source
