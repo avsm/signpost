@@ -9,6 +9,9 @@ class TestTacticHelpers < MiniTest::Unit::TestCase
     res = TacticSolver::Helpers.magic_variables_from "tcp_out@homework.kle.io:834"
     check_for res, "tcp_out", "homework.kle.io", 834, "homework.kle.io:834"
 
+    res = TacticSolver::Helpers.magic_variables_from "ip@default_name:1234"
+    check_for res, "ip", "default_name", 1234, "default_name:1234"
+
     res = TacticSolver::Helpers.magic_variables_from "ip@crash-course"
     check_for res, "ip", "crash-course", nil, "crash-course"
 

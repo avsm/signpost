@@ -17,7 +17,7 @@ module TacticSolver
       # Domain: localhost
       # Port: 8000
 
-      if what =~ /([[:graph:]]*)@(([[:alnum:]\.\-]*)(:([\d]*))?)/ then
+      if what =~ /([[:graph:]]*)@(([[:alnum:]\.\-\_]*)(:([\d]*))?)/ then
         response = {}
 
         resource = $1

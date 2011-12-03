@@ -86,11 +86,13 @@ module TacticSolver
       needed_parameters.each {|p| add_requirement p}
     end
 
-    def self.provides dir_name
+    def self.provides dir_name, node_name
       config = YAML::load(File.open("tactics/#{dir_name}/config.yml"))
       name = config['name']
       provides = []
-      config['provides'].each {|something| provides << Regexp.new(something)}
+      config['provides'].each {|something| 
+        provides << Regexp.new(Tactic.deal_with_magic(something, node_name))
+      }
       {:name => name, :provides => provides}
 
     rescue Errno::ENOENT
@@ -103,7 +105,7 @@ module TacticSolver
       # Providing new thruths back to the system
       if data["provide_truths"] then
         new_truths = data["provide_truths"]
-        new_truths.each {|truth| add_truth truth["what"], truth["value"]}
+        new_truths.each {|truth| add_truth deal_with_magic(truth["what"]), truth["value"]}
       end
 
       # Requesting more truth data
@@ -119,9 +121,21 @@ module TacticSolver
     end
 
   private
+    def self.deal_with_magic provision, node_name
+      prov = provision
+      ({"Local" => node_name}).each_pair do |arg, val|
+         prov.gsub!(arg, val)
+      end
+      prov
+    end
+
+    def deal_with_magic provision
+      Tactic.deal_with_magic provision, @node_name
+    end
+
     def need_from data
       what = data["what"]
-      if data["destination"] then
+      res = if data["destination"] then
         "#{what}@#{data["destination"]}"
       elsif data["domain"] and data["port"] then
         "#{what}@#{data["domain"]}:#{data["port"]}"
@@ -132,9 +146,13 @@ module TacticSolver
       else
         "#{what}@#{@destination}"
       end
+      puts "Returning data: #{res}, got data:"
+      pp data
+      res
     end
 
     def add_truth truth, value
+      puts "Adding new truth: #{truth} -> #{value}"
       self.async_do {
         self.provide_truth <~ [[@solver, [truth, @name, value]]]
       }
@@ -189,7 +207,7 @@ module TacticSolver
       @name = config['name']
       @description = config['description']
 
-      @provides = config['provides']
+      @provides = config['provides'].map {|p| deal_with_magic p}
       @requires = config['requires']
       @dynamic_requirements = config['has_dynamic_requirements'] || false
 

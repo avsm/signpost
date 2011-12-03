@@ -1,9 +1,7 @@
 name: tcp
 description: Evaluated if a TCP connection can be opened between two devices
 provides:
-  - tcp_(in|out)@local:([\d]*)
+  - tcp_(in|out)@Local:([\d]*)
 requires:
   # has no requirements
-# The tactic doesn't need to be reevaluated for a truth to be true
-has_dynamic_requirements: false
 executable: eval_tcp.rb

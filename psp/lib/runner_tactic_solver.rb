@@ -21,6 +21,12 @@ TacticSolver help
 
 To exit type 'exit'
 
+exit : Terminates the program
+tactics : Lists all the tactics
+truths : Shows all the truths known in the system
+
+-------------------------
+
 Supported calls:
 
   (r|resolve) truth
@@ -47,7 +53,9 @@ EOF
   end
 end
 
-tactic_solver = TacticSolver::Solver.new
+resolver_name = "node_name"
+
+tactic_solver = TacticSolver::Solver.new resolver_name
 
 input = RunHelper.get_input
 while not(input =~ /exit/i)
@@ -58,25 +66,31 @@ while not(input =~ /exit/i)
     port = $6
     tactic_solver.resolve "#{what}@#{to}:#{port.to_i}"
 
-  when /c1/
-    tactic_solver.resolve "connection@localhost"
+  when /c1\Z/
+    tactic_solver.resolve "connection@#{resolver_name}"
 
-  when /c2/
-    tactic_solver.resolve "connection@localhost:8080"
+  when /c2\Z/
+    tactic_solver.resolve "connection@#{resolver_name}:8080"
 
-  when /c3/
+  when /c3\Z/
     tactic_solver.resolve "ssh@nf-test109.cl.cam.ac.uk:22"
 
-  when /c4/
-    tactic_solver.resolve "tcp_in@local:8000"
+  when /c4\Z/
+    tactic_solver.resolve "tcp_in@#{resolver_name}:8000"
 
-  when /c5/
-    tactic_solver.resolve "tcp_out@local:8000"
+  when /c5\Z/
+    tactic_solver.resolve "tcp_out@#{resolver_name}:8000"
 
-  when /(r|resolve) ([[:graph:]]*)/
+  when /(r|resolve) ([[:graph:]]*)\Z/
     what = $2
     puts "Should resolve #{what}"
     tactic_solver.resolve what
+
+  when /tactics\Z/
+    pp tactic_solver.tactics.to_a
+
+  when /(t|truths)\Z/
+    pp tactic_solver.truths.to_a
 
   else
     RunHelper.print_help

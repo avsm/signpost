@@ -3,6 +3,8 @@ module TacticSolver
     include Bud
     include TacticProtocol
 
+    attr_reader :tactics
+
     state do
       # These are the truths that we know
       # We know WHAT sort of truth they are
@@ -56,7 +58,7 @@ module TacticSolver
       truths <= [["tcp_in@localhost:8000", "global_truth", true]]
     end
 
-    def initialize node_name = "default_node_name", options = {}
+    def initialize node_name = "default", options = {}
       @name = node_name
       learn_about_tactics
       super options
@@ -101,7 +103,7 @@ module TacticSolver
       @tactics = []
       # Find and initialize all tactics
       Dir.foreach("tactics") do |dir_name|
-        @tactics << (Tactic.provides dir_name) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
+        @tactics << (Tactic.provides dir_name, @name) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
       end
     end
   end
