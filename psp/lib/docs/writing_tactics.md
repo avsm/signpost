@@ -19,17 +19,17 @@ of supporting files needed.
 The following is a Cambridge inspired sample configuration showcasing some of the configuration
 options:
 
-  name: sample
-  description: Illustrates how to configure tactics
-  provides:
-    - sample_(this|that)@Local(:[\d]*)?
-    - gowns_to_be_(s)?worn@([[:graph:]]*)
-  requires:
-    - port_from_year_Port@Local:2222
-    - suitable_gowns@Destination
-    - formal_hall_at@Domain:3215
-    - Resource@Local:2534
-  executable: sample_executable.rb
+    name: sample
+    description: Illustrates how to configure tactics
+    provides:
+      - sample_(this|that)@Local(:[\d]*)?
+      - gowns_to_be_(s)?worn@([[:graph:]]*)
+    requires:
+      - port_from_year_Port@Local:2222
+      - suitable_gowns@Destination
+      - formal_hall_at@Domain:3215
+      - Resource@Local:2534
+    executable: sample_executable.rb
 
 The **provides** section is a list of truth types provided by the tactic. The
 truth types are interpreted as regular expressions and matched against the
@@ -67,41 +67,41 @@ All communication takes the form of JSON objects.
 
 Truths are sent to the tactic using the following syntax:
 
-  {"truths": [
-      {
-        "what":TRUTH_NAME,
-        "source": THE_SOURCE_OF_THE_TRUTH,
-        "value": TRUTH_VALUE
-       }
-    ]
-  }
+    {"truths": [
+        {
+          "what":TRUTH_NAME,
+          "source": THE_SOURCE_OF_THE_TRUTH,
+          "value": TRUTH_VALUE
+         }
+      ]
+    }
 
 ### Communication from the tactic
 
 The tactic can return new truths using the syntax:
 
-  {"provide_truths": [
-      {
-        "what": TRUTH_NAME, # i.e. tcp_in@node:12314
-        "ttl": TTL, # in seconds, 0 = no-cache
-        "value": VALUE
-      }
-    ]
-  }
+    {"provide_truths": [
+        {
+          "what": TRUTH_NAME, # i.e. tcp_in@node:12314
+          "ttl": TTL, # in seconds, 0 = no-cache
+          "value": VALUE
+        }
+      ]
+    }
 
 Requests for additional truths:
 
-  {"need_truths": [
-      {
-        "resource":RESOURCE_NAME, # i.e. tcp_in
-        # optional combination of:
-        "domain": DOMAIN, # domain for which truth should hold
-        "port": PORT, # used in combination with the domain, if provided
-        "destination": DESTINATION, # replaces domain and port if provided
-        "holder: HOLDER # Which signpost node the truth should be evaluated at. Not yet implemented.
-      }
-    ]
-  }
+    {"need_truths": [
+        {
+          "resource":RESOURCE_NAME, # i.e. tcp_in
+          # optional combination of:
+          "domain": DOMAIN, # domain for which truth should hold
+          "port": PORT, # used in combination with the domain, if provided
+          "destination": DESTINATION, # replaces domain and port if provided
+          "holder: HOLDER # Which signpost node the truth should be evaluated at. Not yet implemented.
+        }
+      ]
+    }
 
 If only the port is provided, the same domain is used as in the orignal
 request. If only a domain is provided, the domain is used without a port.
