@@ -11,7 +11,7 @@ the tactics subfolder.
 
 To test the tactic solver use the runner_tactic_solver.rb file:
 
-`ruby runner_tactic_solver.rb`
+    ruby runner_tactic_solver.rb
 
 ## More
 
@@ -29,7 +29,7 @@ In its current form it does not take the new tactic solver into account.
 
 The current version can be tested using the runner_routing_info.rb
 
-`ruby runner_routing_info.rb`
+    ruby runner_routing_info.rb
 
 
 # Dependencies
@@ -37,5 +37,5 @@ The current version can be tested using the runner_routing_info.rb
 Dependencies are specified in the Gemfile format in the parent directory of the
 lib folder. Do get up and running quickly, please use:
 
-`gem install bundler
-bundle install`
+    gem install bundler
+    bundle install
