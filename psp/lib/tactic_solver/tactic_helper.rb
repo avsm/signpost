@@ -111,6 +111,7 @@ private
         @_pending.delete(what.to_sym)
 
         @_data[what.to_sym] = {:value => value, :source => source}
+        @_data[what.to_s] = {:value => value, :source => source}
 
       end
     end

@@ -1,0 +1,7 @@
+name: pingable_ip
+description: Returns true if the IP for a domain is pingable
+provides:
+  - pingable_ip_for_domain@([[:graph:]]*)
+requires:
+  - ip_for_domain@Destination
+executable: ping.rb
