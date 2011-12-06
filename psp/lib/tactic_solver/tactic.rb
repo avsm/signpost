@@ -27,8 +27,10 @@ module TacticSolver
     bloom :parameters do
       needed_truth_scratch <= needed_truth.payloads
       # Pass the parameter to the tactic program
-      stdio <~ needed_truth_scratch do |t|
-        [["Got truth: #{t}"]]
+      temp :dev_null <= needed_truth_scratch do |d|
+        what, source, value = d
+        pass_on_truth what, source, value
+        []
       end
     end
 
@@ -60,28 +62,32 @@ module TacticSolver
     #---------------------------
 
     def execute what
-      start_program
-
-      set_the_magic_variables what
-
       # Do we provide what is required?
       does_provide_what = false
       @provides.each do |provide|
         does_provide_what = true if what =~ /^#{provide}/
       end
+
       unless does_provide_what then
         puts "[#{@name}] does not provide #{what}" 
-        shut_down
         return
+
+      else
+        puts "[#{@name}] does provide #{what}"
+
       end
+
+      start_program
+      set_the_magic_variables what
+
 
       # Add all known data into the bloom system to bootstrap the resolution
       # process
       pass_on_truth "what", "initial_value", what
-      pass_on_truth "port", "initial_value", @port
-      pass_on_truth "destination", "initial_value", @destination
-      pass_on_truth "domain", "initial_value", @domain
-      pass_on_truth "resource", "initial_value", @resource
+      pass_on_truth "port", "initial_value", @_port
+      pass_on_truth "destination", "initial_value", @_destination
+      pass_on_truth "domain", "initial_value", @_domain
+      pass_on_truth "resource", "initial_value", @_resource
 
       # Find what the tactic requires
       needed_parameters = requirements @requires
@@ -145,9 +151,9 @@ module TacticSolver
       elsif data["domain"] then
         "#{what}@#{data["domain"]}"
       elsif data["port"] then
-        "#{what}@#{@domain}:#{data["port"]}"
+        "#{what}@#{@_domain}:#{data["port"]}"
       else
-        "#{what}@#{@destination}"
+        "#{what}@#{@_destination}"
       end
       puts "Returning data: #{res}, got data:"
       pp data
@@ -172,6 +178,7 @@ module TacticSolver
     end
 
     def add_requirement requirement
+      puts "Adding requirement #{requirement}"
       self.async_do {
         self.need_truth <~ [[@solver, [requirement, ip_port, @name]]]
       }
@@ -183,9 +190,9 @@ module TacticSolver
       needed_parameters = []
       requires.each do |requirement|
         adapted_requirement = requirement
-        ({"Port" => @port, "Destination" => @destination,
-         "Domain" => @domain, "Resource" => @resource,
-         "Local" => @node_name}).each_pair do |arg, val|
+        ({"Port" => @_port, "Destination" => @_destination,
+         "Domain" => @_domain, "Resource" => @_resource,
+         "Local" => @_node_name}).each_pair do |arg, val|
           while (adapted_requirement =~ 
               /([\w\d@\-\_\.\:]*)#{arg.capitalize}([\w\d@\-\_\.\:]*)/)
             adapted_requirement = "#{$1}#{val}#{$2}"
@@ -198,10 +205,10 @@ module TacticSolver
 
     def set_the_magic_variables what
       vars = Helpers.magic_variables_from what
-      @domain = vars[:domain]
-      @port = vars[:port]
-      @destination = vars[:destination]
-      @resource = vars[:resource]
+      @_domain = vars[:domain]
+      @_port = vars[:port]
+      @_destination = vars[:destination]
+      @_resource = vars[:resource]
     end
 
     def setup_tactic

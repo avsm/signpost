@@ -21,7 +21,7 @@ class TacticHelper
   end
 
   def when *requirements, &block
-    @_todos << {:requirements => requirements, :block => block}
+    @_todos << {:requirements => requirements.map{|r| r.to_sym}, :block => block}
   end
 
   def need_truth what, options = {}
@@ -107,6 +107,7 @@ private
         value = truth['value']
         source = truth['source']
 
+        $stderr.puts "Received #{what} -> #{value}"
         @_pending.delete(what.to_sym)
 
         @_data[what.to_sym] = {:value => value, :source => source}
