@@ -120,4 +120,62 @@ or not:
 provided.
 -- **resource**: only the truth name itself. i.e. tcp_in for
 tcp_in@remote_host:2341
-- **user**: information about the client requesting the truth
+- **client**: information about the client requesting the truth
+
+# Helper
+To make it simpler to write tactics, there is a helper class provided for ruby.
+
+The following is a example of it's use:
+
+
+  #! /usr/bin/ruby
+
+  require 'rubygems'
+  require 'bundler/setup'
+
+  # includes the helper file
+  require 'tactic_solver/tactic_helper'
+
+  # create a new tactic helper. The tactic helper will deal with
+  # the communication with the tactic solver
+  tactic = tactichelper.new
+
+  # you declare blocks of code that should get
+  # executed whenever a set of required truths have been
+  # provided. The following block has no truth requirements
+  tactic.when do |helper, truths|
+    # run at start.
+    # at this point we have access to:
+    # - what (the full resource destination combo)
+    # - resource (the resource name)
+    # - domain
+    # - port
+    # - destination
+    #
+    # The values are accessed as:
+    # truths[THING][:value]
+    # and the source can be gotten as:
+    # truths[THING][:source]
+  end
+
+  # the following block is executed when both "tcp_in@l:200"
+  # and "tcp_out@l:200" have been provided.
+  # note that these truths will either have to have been requested
+  # in the config.yml or in another block that can be scheduled to
+  # run.
+  tactic.when "tcp_in@l:200", "tcp_out@l:200" do |helper, truths|
+    # request more truths
+    helper.need_truth "my_truth", {:domain => "l"}
+    helper.when "my_truth@l" do |h,t|
+      # access the truth as t["my_truth@l"][:value]
+    end
+    # provide a new truth for the service provided by the tactic
+    helper.provide_truth TRUTH_NAME, VALUE, TTL
+
+    # tell the tactic solver that it can terminate this
+    # tactic instance.
+    helper.terminate_tactic
+  end
+
+  # we need to initialize the tactic, otherwise nothing will ever happen
+  tactic.run
