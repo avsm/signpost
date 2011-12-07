@@ -12,14 +12,15 @@ and use that to manage Rubies and Gems.  For example,
     $ gem update --system
 
 Also append the following to you `~/.bashrc`:
+
     [ -s "$HOME/.rvm/scripts/rvm" ] && source "$HOME/.rvm/scripts/rvm" # Load RVM function
 
 ## Dependencies
 
 Please use bundler to install the dependencies:
 
-	gem install bundler
-	bundler install
+    gem install bundler
+    bundler install
 
 Please note that for the tactic solver to work, you currently need
 to be running ruby version 1.8.X. This is a requirement for one of
