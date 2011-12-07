@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+set -x
+
+LIBTOOLIZE=libtoolize
+if [ "$(uname -s)" = "Darwin" ]; then
+  LIBTOOLIZE=glibtoolize
+fi
+
 # required packages on a clean debian installation:
 # subversion autotools-dev autoconf libtool automake
 # libexpat1-dev  
@@ -15,7 +22,7 @@ cd ldns.svn
 svn up
 
 if [ ! -e configure ]; then 
-  libtoolize -c --install
+  $LIBTOOLIZE -c --install
   autoreconf --install
 fi 
 
