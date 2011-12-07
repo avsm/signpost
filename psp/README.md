@@ -1,5 +1,19 @@
 # Personal signpost
 
+## Ruby Install
+
+Ruby 1.8.x is required.  Suggestion is to install [RVM](http://beginrescueend.com/)
+and use that to manage Rubies and Gems.  For example,
+
+    $ bash < <(curl -s https://raw.github.com/wayneeseguin/rvm/master/binscripts/rvm-installer)
+    $ aenv PATH ~/.rvm/bin
+    $ rvm install 1.8.7
+    $ rvm --default 1.8.7
+    $ gem update --system
+
+Also append the following to you `~/.bashrc`:
+    [ -s "$HOME/.rvm/scripts/rvm" ] && source "$HOME/.rvm/scripts/rvm" # Load RVM function
+
 ## Dependencies
 
 Please use bundler to install the dependencies:
