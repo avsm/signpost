@@ -34,11 +34,12 @@ class TacticHelper
     $stdout.puts needs.to_json
   end
 
-  def provide_truth what, value, cacheable = false, options = {}
+  def provide_truth what, value, ttl = 0, global = false, options = {}
     truth = {
       :what => what,
-      :cacheable => cacheable,
-      :value => value
+      :ttl => ttl,
+      :value => value,
+      :global => global
     }
     new_truth = {:provide_truths => [truth.merge(options)]}
     $stdout.puts new_truth.to_json
@@ -50,7 +51,7 @@ class TacticHelper
 
   def run
     @_should_run = true
-    @_pending = [:destination, :port, :domain, :resource]
+    @_pending = [:destination, :port, :domain, :resource, :user]
 
     while @_should_run do
       value = $stdin.readline("\n")

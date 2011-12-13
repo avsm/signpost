@@ -28,7 +28,7 @@ class TestTactic < MiniTest::Unit::TestCase
   def setup
     @solver = TestSolver.new
     @tactic = TacticSolver::Tactic.new "unit_test", 
-        @solver.ip_port, "node_name"
+        @solver.ip_port, "node_name", "user_info"
   end
 
   def teardown
@@ -111,6 +111,39 @@ class TestTactic < MiniTest::Unit::TestCase
 
     assert_is_true truths, truth, name, value
     assert_is_true truths, other_truth, name, other_value
+
+    @tactic.shut_down
+  end
+
+  def test_pass_on_requesting_user
+    # This is a very roundabout kind of test
+    # The unit_test tactic passes all truths it receives back
+    # as a new truth.
+    # In order to test it, we therefore pass some truths on to the tactic,
+    # and verify that they appear in the solver as truths
+
+    @tactic.execute "unit_testing@local:8080"
+
+    truth_source = "params"
+
+    truth = "user"
+    value = "user_info"
+
+    @tactic.tick
+
+    sleep(1)
+
+    # The test_unit tactic should have changed the source of the truth
+    # to be itself. We therefore have to make sure the original truth source
+    # is not the same as the tactic name
+    name = @tactic.instance_variable_get("@_name")
+    assert truth_source != name, 
+        "Tactic name should not be the same as original truth source"
+
+    # The test unit will have passed the truth back into the solver
+    truths = @solver.truths
+
+    assert_is_true truths, truth, name, value
 
     @tactic.shut_down
   end

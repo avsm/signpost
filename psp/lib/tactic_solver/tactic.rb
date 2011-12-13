@@ -36,13 +36,14 @@ module TacticSolver
 
     #---------------------------
     
-    def initialize dir_name, solver, node_name, options = {}
+    def initialize dir_name, solver, node_name, user_info, options = {}
       @_dir_name = dir_name
       @_node_name = node_name
       @_tactic_folder = File.join(File.dirname(__FILE__), "..", 
           "tactics/#{@_dir_name}")
       @_solver = solver
       @_parameters = {}
+      @_user_info = user_info
 
       setup_tactic
 
@@ -88,6 +89,7 @@ module TacticSolver
       pass_on_truth "destination", "initial_value", @_destination
       pass_on_truth "domain", "initial_value", @_domain
       pass_on_truth "resource", "initial_value", @_resource
+      pass_on_truth "user", "initial_value", @_user_info
 
       # Find what the tactic requires
       needed_parameters = requirements @_requires
@@ -100,7 +102,7 @@ module TacticSolver
       name = config['name']
       provides = []
       config['provides'].each {|something| 
-        provides << Regexp.new(Tactic.deal_with_magic(something, node_name))
+        provides << Regexp.new("^#{Tactic.deal_with_magic(something, node_name)}")
       }
       {:name => name, :provides => provides}
 
@@ -114,7 +116,10 @@ module TacticSolver
       # Providing new thruths back to the system
       if data["provide_truths"] then
         new_truths = data["provide_truths"]
-        new_truths.each {|truth| add_truth deal_with_magic(truth["what"]), truth["value"]}
+        new_truths.each {|truth| 
+          user_info = truth["global"] ? "GLOBAL" : @_user_info
+          add_truth deal_with_magic(truth["what"]), truth["value"], user_info
+        }
       end
 
       # Requesting more truth data
@@ -160,10 +165,11 @@ module TacticSolver
       res
     end
 
-    def add_truth truth, value
+    def add_truth truth, value, user_info
       puts "Adding new truth: #{truth} -> #{value}"
       self.async_do {
-        self.provide_truth <~ [[@_solver, [truth, @_name, value]]]
+        # TODO: Fix to check if should be global?
+        self.provide_truth <~ [[@_solver, [truth, @_name, value, user_info]]]
       }
     end
 
@@ -180,7 +186,7 @@ module TacticSolver
     def add_requirement requirement
       puts "Adding requirement #{requirement}"
       self.async_do {
-        self.need_truth <~ [[@_solver, [requirement, ip_port, @_name]]]
+        self.need_truth <~ [[@_solver, [requirement, ip_port, @_name, @_user_info]]]
       }
     end
 

@@ -5,8 +5,8 @@ module TacticProtocol
     channel :provide_truth # Used by the tactic to provide a truth
 
     # Format of data on the wire
-    scratch :need_truth_scratch, [:what, :who] => [:who_name]
+    scratch :need_truth_scratch, [:what, :who] => [:who_name, :user_info]
     scratch :needed_truth_scratch, [:what, :provider] => [:truth]
-    scratch :provide_truth_scratch, [:what, :provider] => [:truth]
+    scratch :provide_truth_scratch, [:what, :provider] => [:truth, :user_info]
   end
 end

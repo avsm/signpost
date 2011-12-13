@@ -21,9 +21,21 @@ TacticSolver help
 
 To exit type 'exit'
 
-exit : Terminates the program
-tactics : Lists all the tactics
-truths : Shows all the truths known in the system
+exit
+  Terminates the program
+
+tactics 
+  Lists all the tactics
+
+truths
+  Shows all the truths known in the system
+
+user_info: 
+  Set the user information passed along with requests.
+  Usage:
+    
+    user_info INFO
+            
 
 -------------------------
 
@@ -53,6 +65,7 @@ EOF
   end
 end
 
+user_info = "default_user_info"
 resolver_name = "node_name"
 
 tactic_solver = TacticSolver::Solver.new resolver_name
@@ -64,33 +77,39 @@ while not(input =~ /exit/i)
     what = $2
     to = $4
     port = $6
-    tactic_solver.resolve "#{what}@#{to}:#{port.to_i}"
+    tactic_solver.resolve "#{what}@#{to}:#{port.to_i}", user_info
 
   when /c1\Z/
-    tactic_solver.resolve "connection@#{resolver_name}"
+    tactic_solver.resolve "connection@#{resolver_name}", user_info
 
   when /c2\Z/
-    tactic_solver.resolve "connection@#{resolver_name}:8080"
+    tactic_solver.resolve "connection@#{resolver_name}:8080", user_info
 
   when /c3\Z/
-    tactic_solver.resolve "ssh@nf-test109.cl.cam.ac.uk:22"
+    tactic_solver.resolve "ssh@nf-test109.cl.cam.ac.uk:22", user_info
 
   when /c4\Z/
-    tactic_solver.resolve "tcp_in@#{resolver_name}:8000"
+    tactic_solver.resolve "tcp_in@#{resolver_name}:8000", user_info
 
   when /c5\Z/
-    tactic_solver.resolve "tcp_out@#{resolver_name}:8000"
+    tactic_solver.resolve "tcp_out@#{resolver_name}:8000", user_info
 
   when /(r|resolve) ([[:graph:]]*)\Z/
     what = $2
     puts "Should resolve #{what}"
-    tactic_solver.resolve what
+    tactic_solver.resolve what, user_info
 
   when /tactics\Z/
     pp tactic_solver.tactics.to_a
 
   when /(t|truths)\Z/
     pp tactic_solver.truths.to_a
+
+  when /user_info ([[:graph:]]*)\Z/
+    user_info = $1
+
+  when /subs\Z/
+    pp tactic_solver.truth_subscribers.to_a
 
   else
     RunHelper.print_help

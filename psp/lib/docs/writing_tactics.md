@@ -84,7 +84,8 @@ The tactic can return new truths using the syntax:
         {
           "what": TRUTH_NAME, # i.e. tcp_in@node:12314
           "ttl": TTL, # in seconds, 0 = no-cache
-          "value": VALUE
+          "value": VALUE,
+          "global": BOOLEAN # whether other users can see this truth
         }
       ]
     }
