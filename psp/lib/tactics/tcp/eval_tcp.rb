@@ -12,11 +12,13 @@ tactic.when do |helper, truths|
       s = TCPServer.open truths[:port][:value]
       s.close
       # Could open a listening port
-      helper.provide_truth truths[:what][:value], true, true
+      # provide_truth: TRUTH, VALUE, TTL, GLOBAL?
+      helper.provide_truth truths[:what][:value], true, 10, true
 
     rescue Errno::EACCES
       # Failed at opening port in
-      helper.provide_truth truths[:what][:value], false, true
+      # provide_truth: TRUTH, VALUE, TTL, GLOBAL?
+      helper.provide_truth truths[:what][:value], false, 10, true
       
     end
     # We have done our work, so we can now terminate the tactic

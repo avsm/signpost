@@ -13,8 +13,8 @@ tactic.when do |helper, truths|
   packet.each_address do |ip|
     ips << ip
   end
-  # provide_truth: TRUTH, VALUE, CACHEABLE(boolean)
-  helper.provide_truth truths[:what][:value], ips, true
+  # provide_truth: TRUTH, VALUE, TTL, GLOBAL?
+  helper.provide_truth truths[:what][:value], ips, 100, true
   helper.terminate_tactic
   
 end

@@ -16,7 +16,8 @@ tactic.when do |helper, truths|
     $stderr.puts "Got what I was waiting for :)"
     ip = t[waiting_for][:value]
     ip = ip.first if ip.class == Array
-    helper.provide_truth truths[:what][:value], true, true if Ping.pingecho(ip, 10, 80)
+    # provide_truth: TRUTH, VALUE, TTL, GLOBAL?
+    helper.provide_truth truths[:what][:value], true, 10, true if Ping.pingecho(ip, 10, 80)
     helper.terminate_tactic
   end
 end
