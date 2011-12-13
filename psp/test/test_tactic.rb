@@ -37,16 +37,16 @@ class TestTactic < MiniTest::Unit::TestCase
 
   def test_setting_magic_variables
     @tactic.send(:set_the_magic_variables, "service@localhost:80")
-    assert_equal "service", @tactic.instance_variable_get("@resource")
-    assert_equal 80, @tactic.instance_variable_get("@port")
-    assert_equal "localhost:80", @tactic.instance_variable_get("@destination")
-    assert_equal "localhost", @tactic.instance_variable_get("@domain")
+    assert_equal "service", @tactic.instance_variable_get("@_resource")
+    assert_equal 80, @tactic.instance_variable_get("@_port")
+    assert_equal "localhost:80", @tactic.instance_variable_get("@_destination")
+    assert_equal "localhost", @tactic.instance_variable_get("@_domain")
 
     @tactic.send(:set_the_magic_variables, "service@localhost")
-    assert_equal "service", @tactic.instance_variable_get("@resource")
-    assert_equal nil, @tactic.instance_variable_get("@port")
-    assert_equal "localhost", @tactic.instance_variable_get("@destination")
-    assert_equal "localhost", @tactic.instance_variable_get("@domain")
+    assert_equal "service", @tactic.instance_variable_get("@_resource")
+    assert_equal nil, @tactic.instance_variable_get("@_port")
+    assert_equal "localhost", @tactic.instance_variable_get("@_destination")
+    assert_equal "localhost", @tactic.instance_variable_get("@_domain")
   end
 
   def test_requirements
@@ -102,7 +102,7 @@ class TestTactic < MiniTest::Unit::TestCase
     # The test_unit tactic should have changed the source of the truth
     # to be itself. We therefore have to make sure the original truth source
     # is not the same as the tactic name
-    name = @tactic.instance_variable_get("@name")
+    name = @tactic.instance_variable_get("@_name")
     assert truth_source != name, 
         "Tactic name should not be the same as original truth source"
 
@@ -145,7 +145,7 @@ class TestTactic < MiniTest::Unit::TestCase
     sleep(1)
 
     truths = @solver.truths
-    name = @tactic.instance_variable_get("@name")
+    name = @tactic.instance_variable_get("@_name")
 
     assert_is_true truths, truth, name, value
     assert_is_true truths, other_truth, name, other_value
@@ -178,7 +178,6 @@ class TestTactic < MiniTest::Unit::TestCase
     assert_raises (TacticSolver::FailedTactic) do
       @tactic.execute "unsupported_unit_testing@local:8080"
     end
-    @tactic.shut_down
   end
 
   def test_execute_supported_resource

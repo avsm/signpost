@@ -37,12 +37,12 @@ module TacticSolver
     #---------------------------
     
     def initialize dir_name, solver, node_name, options = {}
-      @dir_name = dir_name
-      @node_name = node_name
-      @tactic_folder = File.join(File.dirname(__FILE__), "..", 
-          "tactics/#{@dir_name}")
-      @solver = solver
-      @parameters = {}
+      @_dir_name = dir_name
+      @_node_name = node_name
+      @_tactic_folder = File.join(File.dirname(__FILE__), "..", 
+          "tactics/#{@_dir_name}")
+      @_solver = solver
+      @_parameters = {}
 
       setup_tactic
 
@@ -52,11 +52,11 @@ module TacticSolver
 
     def shut_down
       self.stop
-      @io_in.close if @io_in
-      @io_out.close if @io_out
-      @io_err.close if @io_err
-      @thread_out.terminate
-      @thread_err.terminate
+      @_io_in.close if @_io_in
+      @_io_out.close if @_io_out
+      @_io_err.close if @_io_err
+      @_thread_out.terminate
+      @_thread_err.terminate
     end
 
     #---------------------------
@@ -64,22 +64,22 @@ module TacticSolver
     def execute what
       # Do we provide what is required?
       does_provide_what = false
-      @provides.each do |provide|
+      @_provides.each do |provide|
         does_provide_what = true if what =~ /^#{provide}/
       end
 
       unless does_provide_what then
-        puts "[#{@name}] does not provide #{what}" 
+        puts "[#{@_name}] does not provide #{what}" 
+        raise FailedTactic.new(@_name, "does not provide #{what}")
         return
 
       else
-        puts "[#{@name}] does provide #{what}"
+        puts "[#{@_name}] does provide #{what}"
 
       end
 
-      start_program
       set_the_magic_variables what
-
+      start_program
 
       # Add all known data into the bloom system to bootstrap the resolution
       # process
@@ -90,7 +90,7 @@ module TacticSolver
       pass_on_truth "resource", "initial_value", @_resource
 
       # Find what the tactic requires
-      needed_parameters = requirements @requires
+      needed_parameters = requirements @_requires
       # Add requirements
       needed_parameters.each {|p| add_requirement p}
     end
@@ -106,7 +106,7 @@ module TacticSolver
 
     rescue Errno::ENOENT
       print_error "Missing configuration file: " \
-        + "Please ensure tactics/#{@name}/config.yml exists"
+        + "Please ensure tactics/#{@_name}/config.yml exists"
 
     end
 
@@ -139,7 +139,7 @@ module TacticSolver
     end
 
     def deal_with_magic provision
-      Tactic.deal_with_magic provision, @node_name
+      Tactic.deal_with_magic provision, @_node_name
     end
 
     def need_from data
@@ -163,7 +163,7 @@ module TacticSolver
     def add_truth truth, value
       puts "Adding new truth: #{truth} -> #{value}"
       self.async_do {
-        self.provide_truth <~ [[@solver, [truth, @name, value]]]
+        self.provide_truth <~ [[@_solver, [truth, @_name, value]]]
       }
     end
 
@@ -174,13 +174,13 @@ module TacticSolver
         :value => value
       }
       data = {:truths => [new_truth]}
-      @io_in.puts data.to_json
+      @_io_in.puts data.to_json
     end
 
     def add_requirement requirement
       puts "Adding requirement #{requirement}"
       self.async_do {
-        self.need_truth <~ [[@solver, [requirement, ip_port, @name]]]
+        self.need_truth <~ [[@_solver, [requirement, ip_port, @_name]]]
       }
     end
 
@@ -212,31 +212,31 @@ module TacticSolver
     end
 
     def setup_tactic
-      config_path = @tactic_folder + "/config.yml"
+      config_path = @_tactic_folder + "/config.yml"
       config = YAML::load(File.open(config_path))
-      @name = config['name']
-      @description = config['description']
+      @_name = config['name']
+      @_description = config['description']
 
-      @provides = config['provides'].map {|p| deal_with_magic p}
-      @requires = config['requires']
-      @dynamic_requirements = config['has_dynamic_requirements'] || false
+      @_provides = config['provides'].map {|p| deal_with_magic p}
+      @_requires = config['requires']
+      @_dynamic_requirements = config['has_dynamic_requirements'] || false
 
-      @executable = config['executable']
+      @_executable = config['executable']
 
-      check_file_exists @executable
+      check_file_exists @_executable
 
     rescue Errno::ENOENT
       Tactic.print_error "Missing configuration file: " \
-          + "Please ensure #{@tactic_folder}/config.yml exists"
+          + "Please ensure #{@_tactic_folder}/config.yml exists"
 
     end
 
     def start_program
       # Start the program
-      @io_in, @io_out, @io_err = Open3.popen3("#{@tactic_folder}/#{@executable}")
-      @io_in.sync = true
+      @_io_in, @_io_out, @_io_err = Open3.popen3("#{@_tactic_folder}/#{@_executable}")
+      @_io_in.sync = true
 
-      @thread_out = Thread.new(@io_out, self) do |out, tactic|
+      @_thread_out = Thread.new(@_io_out, self) do |out, tactic|
         while true
           begin
             json_from_program = out.gets
@@ -245,20 +245,20 @@ module TacticSolver
             tactic.deal_with data
 
           rescue e
-            puts "ERROR [#{@name}]: got malformed response from process."
+            puts "ERROR [#{@_name}]: got malformed response from process."
 
           end
         end
       end
 
-      @thread_err = Thread.new(@io_err) do |err|
+      @_thread_err = Thread.new(@_io_err) do |err|
         while true
           begin
             error_text = err.gets
-            puts "STDERR [#{@name}] : #{error_text}" unless error_text.strip.chomp == ""
+            puts "STDERR [#{@_name}] : #{error_text}" unless error_text.strip.chomp == ""
 
           rescue e
-            puts "ERROR [#{@name}]: reading error in STDERR reading thread for #{@name}"
+            puts "ERROR [#{@_name}]: reading error in STDERR reading thread for #{@_name}"
 
           end
         end
@@ -268,17 +268,17 @@ module TacticSolver
     def check_file_exists *files
       files.each do |file|
         file_path = File.join(File.dirname(__FILE__), "..", 
-            "tactics/#{@dir_name}/#{file}")
+            "tactics/#{@_dir_name}/#{file}")
         print_error "#{file} is missing" unless File.exists? file_path
       end
     end
 
     def print_status description
-        puts "STATUS [#{@name}]: #{description}"
+        puts "STATUS [#{@_name}]: #{description}"
     end
 
     def print_error description
-      Tactic.print_error @name, description
+      Tactic.print_error @_name, description
     end
 
   end
