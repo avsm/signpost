@@ -168,7 +168,6 @@ module TacticSolver
     def add_truth truth, value, user_info
       puts "Adding new truth: #{truth} -> #{value}"
       self.async_do {
-        # TODO: Fix to check if should be global?
         self.provide_truth <~ [[@_solver, [truth, @_name, value, user_info]]]
       }
     end
@@ -192,7 +191,6 @@ module TacticSolver
 
     def requirements requires
       return [] unless requires
-      # TODO: What should "local" be swapped with?
       needed_parameters = []
       requires.each do |requirement|
         adapted_requirement = requirement
