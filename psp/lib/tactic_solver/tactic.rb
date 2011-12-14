@@ -20,10 +20,6 @@ module TacticSolver
 
     #---------------------------
 
-    state do
-      table :parameters, [:what, :provider] => [:value]
-    end
-
     bloom :parameters do
       needed_truth_scratch <= needed_truth.payloads
       # Pass the parameter to the tactic program
@@ -39,7 +35,7 @@ module TacticSolver
     def initialize dir_name, solver, node_name, user_info, options = {}
       @_dir_name = dir_name
       @_node_name = node_name
-      @_tactic_folder = File.join(File.dirname(__FILE__), "..", 
+      @_tactic_folder = File.join(File.dirname(__FILE__), "..", "..", 
           "tactics/#{@_dir_name}")
       @_solver = solver
       @_parameters = {}
@@ -52,6 +48,9 @@ module TacticSolver
     end
 
     def shut_down
+      # Remove subscriptions from solver
+      self.sync_do {remove_subscriptions <~ [[@_solver, [ip_port]]]}
+
       self.stop
       @_io_in.close if @_io_in
       @_io_out.close if @_io_out
@@ -63,19 +62,20 @@ module TacticSolver
     #---------------------------
 
     def execute what
+      @_what = what
       # Do we provide what is required?
       does_provide_what = false
       @_provides.each do |provide|
-        does_provide_what = true if what =~ /^#{provide}/
+        does_provide_what = true if @_what =~ /^#{provide}/
       end
 
       unless does_provide_what then
-        puts "[#{@_name}] does not provide #{what}" 
-        raise FailedTactic.new(@_name, "does not provide #{what}")
+        puts "[#{@_name}] does not provide #{@_what}" 
+        raise FailedTactic.new(@_name, "does not provide #{@_what}")
         return
 
       else
-        puts "[#{@_name}] does provide #{what}"
+        puts "[#{@_name}] does provide #{@_what}"
 
       end
 
@@ -84,7 +84,7 @@ module TacticSolver
 
       # Add all known data into the bloom system to bootstrap the resolution
       # process
-      pass_on_truth "what", "initial_value", what
+      pass_on_truth "what", "initial_value", @_what
       pass_on_truth "port", "initial_value", @_port
       pass_on_truth "destination", "initial_value", @_destination
       pass_on_truth "domain", "initial_value", @_domain
@@ -230,7 +230,7 @@ module TacticSolver
       check_file_exists @_executable
 
     rescue Errno::ENOENT
-      Tactic.print_error "Missing configuration file: " \
+      Tactic.print_error @_name, "Missing configuration file: " \
           + "Please ensure #{@_tactic_folder}/config.yml exists"
 
     end
@@ -271,8 +271,7 @@ module TacticSolver
 
     def check_file_exists *files
       files.each do |file|
-        file_path = File.join(File.dirname(__FILE__), "..", 
-            "tactics/#{@_dir_name}/#{file}")
+        file_path = "#{@_tactic_folder}/#{file}"
         print_error "#{file} is missing" unless File.exists? file_path
       end
     end

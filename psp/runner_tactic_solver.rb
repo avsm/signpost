@@ -1,4 +1,4 @@
-require 'tactic_solver'
+require 'lib/tactic_solver'
 
 puts "\n"
 puts "##########################################"

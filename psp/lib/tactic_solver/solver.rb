@@ -24,13 +24,18 @@ module TacticSolver
       scratch :satisfiable_truth_needs, [:who, :what] => [:truth, :user_info]
     end
 
+    # Unsubscribe tactics that terminate
+    bloom :remove_leavers do
+      remove_subscriptions_scratch <= remove_subscriptions.payloads
+      truth_subscribers <- (truth_subscribers*remove_subscriptions_scratch).lefts(:who => :who)
+    end
+
     # Exchange truths with tactics
     bloom :tactic_comms do
       need_truth_scratch <= need_truth.payloads
 
       # A tactic subscribes to a truth so it receives new truths
       # as they come in.
-      # TODO: Unsubscribe tactics as they terminate
       truth_subscribers <+- need_truth_scratch
 
       # Let's see if we can satisfy the truths directly from our truth cache

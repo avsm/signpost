@@ -4,7 +4,7 @@ require 'rubygems'
 require 'ping'
 require 'bundler/setup'
 require 'net/dns/resolver'
-require 'tactic_solver/tactic_helper'
+require 'lib/tactic_solver/tactic_helper'
 
 tactic = TacticHelper.new
 

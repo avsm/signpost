@@ -1,4 +1,4 @@
-require 'routing_info'
+require 'lib/routing_info'
 
 puts "\n"
 puts "##########################################"

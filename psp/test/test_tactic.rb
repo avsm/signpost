@@ -1,6 +1,6 @@
 require 'test_common'
 
-class TestSolver
+class MockSolver
   include Bud
   include TacticProtocol
 
@@ -27,7 +27,7 @@ end
 class TestTactic < MiniTest::Unit::TestCase
   def setup
     @user_info = "user_info"
-    @solver = TestSolver.new
+    @solver = MockSolver.new
     @tactic = TacticSolver::Tactic.new "unit_test", 
         @solver.ip_port, "node_name", @user_info
   end

@@ -1,8 +1,8 @@
-#! /usr/bin/ruby
+#! /usr/bin/env ruby
 
 require 'rubygems'
 require 'socket'
-require 'tactic_solver/tactic_helper'
+require 'lib/tactic_solver/tactic_helper'
 
 tactic = TacticHelper.new
 

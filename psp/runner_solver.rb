@@ -2,7 +2,7 @@ require 'rubygems'
 require 'bundler/setup'
 require 'zmq'
 require 'pp'
-require 'tactic_solver'
+require 'lib/tactic_solver'
 
 gem "json"
 begin
