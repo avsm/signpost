@@ -127,6 +127,9 @@ module TacticSolver
         needs = data["need_truths"]
         needs.each {|nd| add_requirement need_from nd}
       end
+
+      # Log messages
+      data["logs"].each {|log_msg| print_status log_msg} if data["logs"]
     end
 
     def self.print_error name, description
@@ -160,13 +163,10 @@ module TacticSolver
       else
         "#{what}@#{@_destination}"
       end
-      puts "Returning data: #{res}, got data:"
-      pp data
       res
     end
 
     def add_truth truth, value, user_info
-      puts "Adding new truth: #{truth} -> #{value}"
       self.async_do {
         self.provide_truth <~ [[@_solver, [truth, @_name, value, user_info]]]
       }

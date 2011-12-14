@@ -24,6 +24,11 @@ class TacticHelper
     @_todos << {:requirements => requirements.map{|r| r.to_sym}, :block => block}
   end
 
+  def log msg
+    logs = {:logs => [msg]}
+    $stdout.puts logs.to_json
+  end
+
   def need_truth what, options = {}
     need = {:what => what}
     need = add_option need, :domain, options
@@ -59,9 +64,9 @@ class TacticHelper
       begin
         data = JSON.parse(value)
         deal_with_input data
-        
+
         execute_user_blocks
-        
+
       rescue JSON::ParserError
         $stderr.puts "Couldn't parse the input"
 
@@ -99,7 +104,7 @@ private
   def deal_with_input data
     # Allow the tactic to terminate us
     @_should_run = false if data['terminate']
-      
+
     # We have received new truths
     if data['truths'] then
       received_truths = data['truths']
@@ -108,7 +113,7 @@ private
         value = truth['value']
         source = truth['source']
 
-        $stderr.puts "Received #{what} -> #{value}"
+        log "Received #{what} -> #{value}"
         @_pending.delete(what.to_sym)
 
         @_data[what.to_sym] = {:value => value, :source => source}

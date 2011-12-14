@@ -11,19 +11,32 @@ module TacticSolver
       needed_truth_scratch <= needed_truth.payloads
     end
 
-    def initialize what, solver, user_info, &block
-      @question = what
-      @solver = solver
-      @user_info = user_info
+    def initialize options, &block
+      @question = options.delete(:what)
+      @solver = options.delete(:solver)
+      @user_info = options.delete(:user_info)
       @callback = block
+      @return_value = nil
+      @working = true
 
-      options = {}
       super options
 
       self.run_bg
       self.register_callback(:needed_truth_scratch) do |d|
-        @callback.call(d)
+        @return_value = @callback.call(d)
+        @working = false
       end
+    end
+
+    def answer
+      # Spin lock until the value is returned
+      while @working do end
+
+      # terminate the question
+      self.stop
+
+      # Returns what was returned by the 
+      @return_value
     end
   end
 end

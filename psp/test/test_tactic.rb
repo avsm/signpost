@@ -26,9 +26,10 @@ end
 
 class TestTactic < MiniTest::Unit::TestCase
   def setup
+    @user_info = "user_info"
     @solver = TestSolver.new
     @tactic = TacticSolver::Tactic.new "unit_test", 
-        @solver.ip_port, "node_name", "user_info"
+        @solver.ip_port, "node_name", @user_info
   end
 
   def teardown
@@ -127,7 +128,7 @@ class TestTactic < MiniTest::Unit::TestCase
     truth_source = "params"
 
     truth = "user"
-    value = "user_info"
+    value = @user_info
 
     @tactic.tick
 
@@ -170,14 +171,15 @@ class TestTactic < MiniTest::Unit::TestCase
   def test_add_truth
     truth = "a_truth"
     value = "truth_value"
-    @tactic.send(:add_truth, truth, value)
+    @tactic.send(:add_truth, truth, value, @user_info)
     other_truth = "other_truth"
     other_value = "other_truth_value"
-    @tactic.send(:add_truth, other_truth, other_value)
+    @tactic.send(:add_truth, other_truth, other_value, @user_info)
     @tactic.tick
     sleep(1)
 
     truths = @solver.truths
+    pp truths.to_a
     name = @tactic.instance_variable_get("@_name")
 
     assert_is_true truths, truth, name, value
@@ -264,9 +266,10 @@ class TestTactic < MiniTest::Unit::TestCase
 private
   def assert_is_true p, what, source, value
     assert_equal 1, (p.to_a.select {|t| 
+      data = t[2]
       t[0] == what and
       t[1] == source and
-      t[2] == [value]
+      data[0] == value
     }).size, "Should have a truth for #{what}"
   end
 

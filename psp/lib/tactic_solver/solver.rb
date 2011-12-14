@@ -73,7 +73,8 @@ module TacticSolver
 
     def resolve what, user_info
       puts "Attempting to resolve '#{what}' with user info #{user_info}"
-      question = Question.new what, ip_port, user_info do |truths|
+      options = {:what => what, :solver => ip_port, :user_info => user_info, :sync => true}
+      question = Question.new options do |truths|
         puts "QUESTION #{what}"
         truths.to_a.each do |truth|
           truth_name, who, answer = truth
@@ -86,13 +87,17 @@ module TacticSolver
             puts "\tdata: #{answer}"
           end
         end
-        question.stop
       end
+      question.stop
 
     end
 
     def shutdown
-      puts "Shutting down this mess"
+      puts "Shutting down the tactic solver"
+    end
+
+    def get_ip_port
+      ip_port
     end
 
   private
