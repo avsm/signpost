@@ -5,6 +5,8 @@ gem "rubydns"
 gem "net-dns", :git => "git@github.com:sebastian/net-dns.git"
 gem "ZenTest"
 gem "minitest"
+gem "rexec"
+gem "zmq"
 
 # The following gems are required for the tactic solver
 gem "bud"
