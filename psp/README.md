@@ -20,7 +20,7 @@ Also append the following to you `~/.bashrc`:
 Please use bundler to install the dependencies:
 
     gem install bundler
-    bundler install
+    bundle install
 
 Please note that for the tactic solver to work, you currently need
 to be running ruby version 1.8.X. This is a requirement for one of
