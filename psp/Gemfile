@@ -9,5 +9,5 @@ gem "rexec"
 gem "zmq"
 
 # The following gems are required for the tactic solver
-gem "bud"
+gem "bud", :git => "git://github.com/bloom-lang/bud.git"
 gem "daemons" # For the direct_connection dummy tactic
