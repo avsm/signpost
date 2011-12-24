@@ -1,0 +1,8 @@
+name: web_auth
+description: Provides a tactic for allowing a user to manually approve or deny conncetions
+provides:
+  - is_authorized@([[:graph:]]*)
+  - is_authorised@([[:graph:]]*)
+requires:
+  - web_auth_url@Local
+executable: auth.rb
