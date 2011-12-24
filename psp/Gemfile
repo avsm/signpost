@@ -8,6 +8,8 @@ gem "minitest"
 gem "rexec"
 gem "zmq"
 
+gem "thin"
+
 # The following gems are required for the tactic solver
 gem "bud"
 gem "daemons" # For the direct_connection dummy tactic
