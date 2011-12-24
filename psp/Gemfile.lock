@@ -1,5 +1,5 @@
 GIT
-  remote: git@github.com:sebastian/net-dns.git
+  remote: git://github.com/sebastian/net-dns.git
   revision: 5928aa15d814a684be82f85266285d3bb99b9102
   specs:
     net-dns (0.6.1)

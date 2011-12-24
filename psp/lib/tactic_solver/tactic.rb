@@ -22,12 +22,6 @@ module TacticSolver
 
     bloom :parameters do
       needed_truth_scratch <= needed_truth.payloads
-      # Pass the parameter to the tactic program
-      temp :dev_null <= needed_truth_scratch do |d|
-        what, source, value = d
-        pass_on_truth what, source, value
-        []
-      end
     end
 
     #---------------------------
@@ -45,6 +39,18 @@ module TacticSolver
 
       super options
       self.run_bg
+      register_callbacks
+    end
+
+    def register_callbacks
+      # When we get truths we need, then pass them on to the program
+      self.register_callback(:needed_truth_scratch) do |data|
+        # TODO: Make this happen in a thread?
+        data.to_a.each do |d|
+          what, source, user_info, value = d
+          pass_on_truth what, source, value
+        end
+      end
     end
 
     def shut_down
@@ -117,7 +123,7 @@ module TacticSolver
       if data["provide_truths"] then
         new_truths = data["provide_truths"]
         new_truths.each {|truth| 
-          user_info = truth["global"] ? "GLOBAL" : @_user_info
+          user_info = truth["global"] == true ? "GLOBAL" : @_user_info
           add_truth deal_with_magic(truth["what"]), truth["value"], user_info
         }
       end
@@ -167,8 +173,8 @@ module TacticSolver
     end
 
     def add_truth truth, value, user_info
-      self.async_do {
-        self.provide_truth <~ [[@_solver, [truth, @_name, value, user_info]]]
+      self.sync_do {
+        self.provide_truth <~ [[@_solver, [truth, @_name, user_info, value]]]
       }
     end
 
@@ -183,9 +189,9 @@ module TacticSolver
     end
 
     def add_requirement requirement
-      puts "Adding requirement #{requirement}"
-      self.async_do {
-        self.need_truth <~ [[@_solver, [requirement, ip_port, @_name, @_user_info]]]
+      print_status "Adding requirement #{requirement}"
+      self.sync_do {
+        self.need_truth <~ [[@_solver, [requirement, ip_port, @_user_info, @_name]]]
       }
     end
 

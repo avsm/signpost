@@ -12,7 +12,7 @@ class MockSolver
 
   state do
     table :needs
-    table :truths
+    table :truths, [:what, :provider, :user_info] => [:truth]
   end
 
   bloom :receive_need do
@@ -266,10 +266,9 @@ class TestTactic < MiniTest::Unit::TestCase
 private
   def assert_is_true p, what, source, value
     assert_equal 1, (p.to_a.select {|t| 
-      data = t[2]
       t[0] == what and
-      t[1] == source and
-      data[0] == value
+      t[1] == source and # t[2] is user_info
+      t[3] == value
     }).size, "Should have a truth for #{what}"
   end
 

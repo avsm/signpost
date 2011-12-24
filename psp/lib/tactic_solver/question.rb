@@ -4,7 +4,7 @@ module TacticSolver
     include TacticProtocol
 
     bootstrap do
-      need_truth <~ [[@solver, [@question, ip_port, "user_question", @user_info]]]
+      need_truth <~ [[@solver, [@question, ip_port, @user_info, "user_question"]]]
     end
 
     bloom :question_answer do

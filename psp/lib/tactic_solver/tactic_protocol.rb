@@ -6,9 +6,9 @@ module TacticProtocol
     channel :remove_subscriptions # Used by tactic when terminating to unsubscribe
 
     # Format of data on the wire
-    scratch :need_truth_scratch, [:what, :who] => [:who_name, :user_info]
+    scratch :need_truth_scratch, [:what, :who] => [:user_info, :who_name]
     scratch :needed_truth_scratch, [:what, :provider] => [:truth]
-    scratch :provide_truth_scratch, [:what, :provider] => [:truth, :user_info]
+    scratch :provide_truth_scratch, [:what, :provider, :user_info] => [:truth]
     scratch :remove_subscriptions_scratch, [:who]
   end
 end
