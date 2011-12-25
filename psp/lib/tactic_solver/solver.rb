@@ -48,11 +48,12 @@ module TacticSolver
       needed_truth <~ satisfiable_truth_needs {|stn| [stn.who, stn.truth]}
 
       # Find needs that we cannot satisfy, and register them
+      stdio <~ need_truth_scratch.inspected
       temp :dev_null <= need_truth_scratch do |nt|
         unless satisfiable_truth_needs.exists? {|s|
           s.what == nt.what and (s.user_info == nt.user_info or s.user_info == "GLOBAL")
         } then
-          explore_truth_space_for nt.what, nt.user_info
+          explore_truth_space_for [[nt.what, nt.user_info]]
         end
       end
       
@@ -106,12 +107,15 @@ module TacticSolver
     end
 
   private
-    def explore_truth_space_for what, user_info
-      @tactics.each do |tactic|
-        tactic[:provides].each do |thing|
-          if thing.match(what) then
-            options = {:what => what}
-            Tactic.new tactic[:name], ip_port, @name, user_info, options
+    def explore_truth_space_for space
+      space.each do |what, user_info|
+        @tactics.each do |tactic|
+          tactic[:provides].each do |thing|
+            if thing.match(what) then
+              options = {:what => what}
+              puts "Calling tactic.new #{tactic[:name]}"
+              Tactic.new tactic[:name], ip_port, @name, user_info, options
+            end
           end
         end
       end
