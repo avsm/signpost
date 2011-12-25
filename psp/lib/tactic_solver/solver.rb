@@ -21,10 +21,6 @@ module TacticSolver
       # We know WHO needs WHAT and for WHAT user,
       # and the TRUTH needed
       scratch :satisfiable_truth_needs, [:who, :what, :user_info] => [:truth]
-
-      # Truths that we need to start tactics for
-      # We know WHAT we are looking for, and for WHOM
-      scratch :explore_space, [:what, :user_info]
     end
 
     # Unsubscribe tactics that terminate
@@ -51,21 +47,12 @@ module TacticSolver
       }
       needed_truth <~ satisfiable_truth_needs {|stn| [stn.who, stn.truth]}
 
-      # Find needs that we cannot satisfy, and find a way to solve them
-      # explore_space <= need_truth_scratch do |nt|
-      #   unless satisfiable_truth_needs.exists? {|s|
-      #     s.what == nt.what and (s.user_info == nt.user_info or s.user_info == "GLOBAL")
-      #   } then
-      #     [nt.what, nt.user_info]
-      #   end
-      # end
-
       # Find needs that we cannot satisfy, and register them
       temp :dev_null <= need_truth_scratch do |nt|
         unless satisfiable_truth_needs.exists? {|s|
           s.what == nt.what and (s.user_info == nt.user_info or s.user_info == "GLOBAL")
         } then
-          explore_truth_space_for [[nt.what, nt.user_info]]
+          explore_truth_space_for nt.what, nt.user_info
         end
       end
       
@@ -90,7 +77,6 @@ module TacticSolver
       learn_about_tactics
 
       super options
-      register_callbacks
       self.run_bg
     end
 
@@ -119,30 +105,16 @@ module TacticSolver
       puts "Shutting down the tactic solver"
     end
 
-    def get_ip_port
-      ip_port
-    end
-
   private
-    def register_callbacks
-      self.register_callback(:explore_space) do |space| 
-        explore_truth_space_for space.to_a
-      end
-    end
-
-    def explore_truth_space_for space
-      # Thread.new do
-        space.each do |what, user_info|
-          @tactics.each do |tactic|
-            tactic[:provides].each do |thing|
-              if thing.match(what) then
-                t = Tactic.new tactic[:name], ip_port, @name, user_info 
-                t.execute what
-              end
-            end
+    def explore_truth_space_for what, user_info
+      @tactics.each do |tactic|
+        tactic[:provides].each do |thing|
+          if thing.match(what) then
+            options = {:what => what}
+            Tactic.new tactic[:name], ip_port, @name, user_info, options
           end
         end
-      # end
+      end
     end
 
     def learn_about_tactics

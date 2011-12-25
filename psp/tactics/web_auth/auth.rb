@@ -4,7 +4,6 @@ require 'rubygems'
 require 'net/http'
 require 'uri'
 require 'json'
-require 'bundler/setup'
 require 'lib/tactic_solver/tactic_helper'
 
 tactic = TacticHelper.new
