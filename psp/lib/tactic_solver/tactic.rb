@@ -22,12 +22,10 @@ module TacticSolver
 
     bloom :parameters do
       needed_truth_scratch <= needed_truth.payloads
-      # Pass the parameter to the tactic program
-      temp :dev_null <= needed_truth_scratch do |d|
-        what, source, value = d
-        pass_on_truth what, source, value
-        []
-      end
+    end
+  
+    bootstrap do
+      do_execute if @_perform_delayed_execution
     end
 
     #---------------------------
@@ -40,11 +38,25 @@ module TacticSolver
       @_solver = solver
       @_parameters = {}
       @_user_info = user_info
+      @_what = options[:what] || nil
+      @_perform_delayed_execution = @_what ? true : false
 
       setup_tactic
 
       super options
       self.run_bg
+      register_callbacks
+    end
+
+    def register_callbacks
+      # When we get truths we need, then pass them on to the program
+      self.register_callback(:needed_truth_scratch) do |data|
+        # TODO: Make this happen in a thread?
+        data.to_a.each do |d|
+          what, source, user_info, value = d
+          pass_on_truth what, source, value
+        end
+      end
     end
 
     def shut_down
@@ -60,6 +72,11 @@ module TacticSolver
     end
 
     #---------------------------
+
+    def do_execute
+      @_perform_delayed_execution = false
+      execute @_what
+    end
 
     def execute what
       @_what = what
@@ -80,6 +97,12 @@ module TacticSolver
       end
 
       set_the_magic_variables what
+
+      # Find what the tactic requires
+      needed_parameters = requirements @_requires
+      # Add requirements
+      needed_parameters.each {|p| add_requirement p}
+
       start_program
 
       # Add all known data into the bloom system to bootstrap the resolution
@@ -90,11 +113,6 @@ module TacticSolver
       pass_on_truth "domain", "initial_value", @_domain
       pass_on_truth "resource", "initial_value", @_resource
       pass_on_truth "user", "initial_value", @_user_info
-
-      # Find what the tactic requires
-      needed_parameters = requirements @_requires
-      # Add requirements
-      needed_parameters.each {|p| add_requirement p}
     end
 
     def self.provides dir_name, node_name
@@ -117,7 +135,7 @@ module TacticSolver
       if data["provide_truths"] then
         new_truths = data["provide_truths"]
         new_truths.each {|truth| 
-          user_info = truth["global"] ? "GLOBAL" : @_user_info
+          user_info = truth["global"] == true ? "GLOBAL" : @_user_info
           add_truth deal_with_magic(truth["what"]), truth["value"], user_info
         }
       end
@@ -167,8 +185,8 @@ module TacticSolver
     end
 
     def add_truth truth, value, user_info
-      self.async_do {
-        self.provide_truth <~ [[@_solver, [truth, @_name, value, user_info]]]
+      self.sync_do {
+        self.provide_truth <~ [[@_solver, [truth, @_name, user_info, value]]]
       }
     end
 
@@ -183,9 +201,8 @@ module TacticSolver
     end
 
     def add_requirement requirement
-      puts "Adding requirement #{requirement}"
-      self.async_do {
-        self.need_truth <~ [[@_solver, [requirement, ip_port, @_name, @_user_info]]]
+      self.sync_do {
+        self.need_truth <~ [[@_solver, [requirement, ip_port, @_user_info, @_name]]]
       }
     end
 

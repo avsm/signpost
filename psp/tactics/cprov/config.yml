@@ -1,0 +1,6 @@
+name: CProv
+description: Test
+provides:
+  - c@Local
+requires:
+executable: code.rb

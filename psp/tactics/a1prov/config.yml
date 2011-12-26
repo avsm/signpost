@@ -1,0 +1,7 @@
+name: A1Prov
+description: Test
+provides:
+  - a1@Local
+requires:
+  - b1@Local
+executable: code.rb

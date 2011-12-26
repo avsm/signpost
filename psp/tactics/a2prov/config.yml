@@ -1,0 +1,6 @@
+name: A2Prov
+description: Test
+provides:
+  - a2@Local
+requires:
+executable: code.rb

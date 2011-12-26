@@ -113,11 +113,16 @@ private
         value = truth['value']
         source = truth['source']
 
-        log "Received #{what} -> #{value}"
-        @_pending.delete(what.to_sym)
+        # We deal with the truths just as their resource names, rather than
+        # full resource@domain combos. Makes it easier to write tactics.
+        what =~ /([[:graph:]]*)@([[:graph:]]*)/
+        short_form = $1 || what
 
-        @_data[what.to_sym] = {:value => value, :source => source}
-        @_data[what.to_s] = {:value => value, :source => source}
+        log "Received #{short_form} -> #{value}"
+        @_pending.delete(short_form.to_sym)
+
+        @_data[short_form.to_sym] = {:what => what, :value => value, :source => source}
+        @_data[short_form.to_s] = {:what => what, :value => value, :source => source}
 
       end
     end

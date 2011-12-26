@@ -41,7 +41,9 @@ private
   def assert_there_are_subscriptions_for tactic_name, subs, user_info
     that_there_are = false
     subs.each do |sub|
-      that_there_are = true if (sub[2] == tactic_name && sub[3] == user_info)
+      sub_user_info = sub[2]
+      sub_tactic_name = sub[3]
+      that_there_are = true if (sub_tactic_name == tactic_name && sub_user_info == user_info)
     end
     assert that_there_are, "There should be a subscription for #{tactic_name}"
   end
