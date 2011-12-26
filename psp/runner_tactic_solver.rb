@@ -111,6 +111,13 @@ while not(input =~ /exit/i)
   when /subs\Z/
     pp tactic_solver.truth_subscribers.to_a
 
+  when /running\?\Z/
+    if EventMachine::reactor_running? then
+      puts "Reactor is running"
+    else
+      puts "Reactor is DOWN"
+    end
+
   else
     RunHelper.print_help
 
@@ -119,6 +126,7 @@ while not(input =~ /exit/i)
 end
 # Important to shut it down when done, so the tactic daemons are killed
 tactic_solver.shutdown
+tactic_solver.stop
 
 puts "\n\n"
 puts "##########################################"

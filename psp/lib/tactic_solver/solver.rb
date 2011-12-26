@@ -75,13 +75,12 @@ module TacticSolver
     def initialize node_name = "default", options = {}
       @name = node_name
       learn_about_tactics
-
+      
       super options
       self.run_bg
     end
 
     def resolve what, user_info
-      puts "Attempting to resolve '#{what}' with user info #{user_info}"
       options = {:what => what, :solver => ip_port, :user_info => user_info}
       question = Question.new options do |truths|
         puts "QUESTION #{what}"
@@ -92,13 +91,12 @@ module TacticSolver
           puts "\tprovider: #{who}"
           puts "\tuser_info: #{user_info}"
           if answer.class == Array then
-            puts "\tdata: #{answer.join(", ")}"
+            puts "\tdata: [#{answer.join(", ")}]"
           else
-            puts "\tdata: #{answer}"
+            puts "\tdata: [#{answer}]"
           end
         end
       end
-      # question.answer
     end
 
     def shutdown
@@ -111,8 +109,7 @@ module TacticSolver
         tactic[:provides].each do |thing|
           if thing.match(what) then
             options = {:what => what}
-            puts "Calling tactic.new #{tactic[:name]}"
-            Tactic.new tactic[:name], ip_port, @name, user_info, options
+            Tactic.new tactic[:dir_name], ip_port, @name, user_info, options
           end
         end
       end
