@@ -58,10 +58,10 @@ The following assumes a request for gowns_to_be_worn@Darwin:20 on node Alpha.
 
 ## Communication with Tactic
 
-The tactic solver communicates through STDIO with the tactics. STDERR is also
-intercepted and piped into an error log (currently printed in the user shell).
-
+The tactic solver communicates with the tactics using unix sockets.
 All communication takes the form of JSON objects.
+The unix socket the tactic is supposed to use is passed as the first and only
+argument to the tactic.
 
 ### Communication to the tactic
 
@@ -135,7 +135,7 @@ The following is a example of it's use:
     require 'bundler/setup'
 
     # includes the helper file
-    require 'tactic_solver/tactic_helper'
+    require 'lib/tactic_solver/tactic_helper'
 
     # create a new tactic helper. The tactic helper will deal with
     # the communication with the tactic solver
@@ -153,10 +153,17 @@ The following is a example of it's use:
       # - port
       # - destination
       #
-      # The values are accessed as:
+      # The values are indexed by their resource name.
+      # If you wanted to access the value of ip_for_domain@kle.io
+      # you would call:
+      # truths[:ip_for_domain][...]
+      # To get the value itself, use:
       # truths[THING][:value]
-      # and the source can be gotten as:
+      # the source can be gotten as:
       # truths[THING][:source]
+      # and if you want to access the whole resource,
+      # i.e. ip_for_domain@kle.io, call:
+      # truths[:ip_for_domain][:what]
     end
 
     # the following block is executed when both "tcp_in@l:200"
@@ -164,14 +171,18 @@ The following is a example of it's use:
     # note that these truths will either have to have been requested
     # in the config.yml or in another block that can be scheduled to
     # run.
-    tactic.when "tcp_in@l:200", "tcp_out@l:200" do |helper, truths|
+    tactic.when :tcp_in, :tcp_out do |helper, truths|
       # request more truths
       helper.need_truth "my_truth", {:domain => "l"}
-      helper.when "my_truth@l" do |h,t|
-        # access the truth as t["my_truth@l"][:value]
-      end
+
       # provide a new truth for the service provided by the tactic
       helper.provide_truth TRUTH_NAME, VALUE, TTL
+    end
+
+    # This block becomes executable when the truth requested above
+    # becomes available.
+    helper.when :my_truth do |h,t|
+      # access the truth as t[:my_truth][:value]
 
       # tell the tactic solver that it can terminate this
       # tactic instance.
