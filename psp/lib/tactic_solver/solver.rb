@@ -50,7 +50,7 @@ module TacticSolver
         unless satisfiable_truth_needs.exists? {|s|
           s.what == nt.what and (s.user_info == nt.user_info or s.user_info == "GLOBAL")
         } then
-          explore_truth_space_for nt.what, nt.user_info
+          @_thread_pool.explore_truth_space_for nt.what, nt.user_info
         end
       end
       
@@ -101,17 +101,6 @@ module TacticSolver
 
     def tactics
       @_thread_pool.tactics
-    end
-
-  private
-    def explore_truth_space_for what, user_info
-      @_thread_pool.tactics.each do |tactic|
-        tactic[:provides].each do |thing|
-          if thing.match(what) then
-            @_thread_pool.spawn_execution_for tactic, what, user_info
-          end
-        end
-      end
     end
   end
 end

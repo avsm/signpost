@@ -1,31 +1,28 @@
 module TacticSolver
   class TacticPool
-    attr_accessor :tactics
-
     def initialize node_name, ip_port
       @_node_name = node_name
       @_ip_port = ip_port
 
       # This is where tactics are stored
       @_tactic_pool = {}
+      @_tactics = []
 
       learn_about_tactics
     end
+
+    def explore_truth_space_for what, user_info
+      @_tactics.each do |tactic|
+        tactic[:provides].each do |thing|
+          if thing.match(what) then
+            spawn_execution_for tactic, what, user_info
+          end
+        end
+      end
+    end
     
-    def spawn_execution_for tactic, what, user_info
-      pool = pool_for_name tactic[:dir_name]
-
-      # There are no tactics available. Instead queue the
-      # request, and spawn a tactic instance.
-      if pool.empty? then
-        puts "[INFO]: Expanding tactic thread pool with tactic '#{tactic[:name]}'"
-        TacticThread.new tactic[:dir_name], self
-
-      end
-
-      pool.pop do |tactic_instance|
-        serve_tactic_request tactic_instance, what, user_info
-      end
+    def tactics
+      @_tactics
     end
 
     # -----------------------------------------
@@ -47,6 +44,22 @@ module TacticSolver
     # -----------------------------------------
     
   private
+    def spawn_execution_for tactic, what, user_info
+      pool = pool_for_name tactic[:dir_name]
+
+      # There are no tactics available. Instead queue the
+      # request, and spawn a tactic instance.
+      if pool.empty? then
+        puts "[INFO]: Expanding tactic thread pool with tactic '#{tactic[:name]}'"
+        TacticThread.new tactic[:dir_name], self
+
+      end
+
+      pool.pop do |tactic_instance|
+        serve_tactic_request tactic_instance, what, user_info
+      end
+    end
+
     def pool_for_name name
       @_tactic_pool[name] ||= EM::Queue.new
       @_tactic_pool[name]
@@ -58,10 +71,9 @@ module TacticSolver
     end
 
     def learn_about_tactics
-      @tactics = []
       # Find and initialize all tactics
       Dir.foreach("tactics") do |dir_name|
-        @tactics << (Tactic.provides dir_name, @_node_name) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
+        @_tactics << (Tactic.provides dir_name, @_node_name) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
       end
     end
   end
