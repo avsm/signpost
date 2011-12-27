@@ -15,7 +15,7 @@ tactic.when :ip_for_domain do |helper, truths|
   if ($?.exitstatus == 0) then
     helper.provide_truth truths[:what][:value], true, 10, true
   end
-  helper.terminate_tactic
+  helper.recycle_tactic
 end
 
 # We need to initialize the tactic, otherwise nothing will ever happen

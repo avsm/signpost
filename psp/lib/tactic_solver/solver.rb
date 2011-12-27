@@ -3,8 +3,6 @@ module TacticSolver
     include Bud
     include TacticProtocol
 
-    attr_reader :tactics
-
     state do
       # These are the truths that we know
       # We know WHAT sort of truth they are
@@ -74,10 +72,12 @@ module TacticSolver
 
     def initialize node_name = "default", options = {}
       @name = node_name
-      learn_about_tactics
       
       super options
       self.run_bg
+
+      # Pool for tactics
+      @_thread_pool = TacticPool.new @name, ip_port
     end
 
     def resolve what, user_info
@@ -99,27 +99,18 @@ module TacticSolver
       end
     end
 
-    def shutdown
-      puts "Shutting down the tactic solver"
+    def tactics
+      @_thread_pool.tactics
     end
 
   private
     def explore_truth_space_for what, user_info
-      @tactics.each do |tactic|
+      @_thread_pool.tactics.each do |tactic|
         tactic[:provides].each do |thing|
           if thing.match(what) then
-            options = {:what => what}
-            Tactic.new tactic[:dir_name], ip_port, @name, user_info, options
+            @_thread_pool.spawn_execution_for tactic, what, user_info
           end
         end
-      end
-    end
-
-    def learn_about_tactics
-      @tactics = []
-      # Find and initialize all tactics
-      Dir.foreach("tactics") do |dir_name|
-        @tactics << (Tactic.provides dir_name, @name) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
       end
     end
   end

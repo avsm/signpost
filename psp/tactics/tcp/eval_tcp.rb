@@ -22,14 +22,14 @@ tactic.when do |helper, truths|
       
     end
     # We have done our work, so we can now terminate the tactic
-    helper.terminate_tactic
+    helper.recycle_tactic
 
   elsif truths[:resource][:value] == "tcp_out" then
     
     # TODO: Implement something useful here...
     
     # We have done our work, so we can now terminate the tactic
-    helper.terminate_tactic
+    helper.recycle_tactic
 
   end
 end

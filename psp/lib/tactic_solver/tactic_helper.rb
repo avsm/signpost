@@ -20,7 +20,6 @@ unless ARGV.size == 1 then
   puts "The tactic should be called with a unix socket for communication"
   exit 1
 end
-unix_socket = ARGV[0]
 
 class CommunicationManager < EventMachine::Connection
   def initialize delegate
@@ -28,15 +27,6 @@ class CommunicationManager < EventMachine::Connection
     super
 
     @_delegate.manager = self
-  end
-
-  def stop_manager
-    # For some reason the closing of the connection_after_write
-    # seems to happen immediately, rathen than after write.
-    # Therefore, delay the closing a little while.
-    EM.add_timer(1) do
-      self.close_connection_after_writing()
-    end
   end
 
   def relay_data data
@@ -49,11 +39,12 @@ class CommunicationManager < EventMachine::Connection
         e = JSON.parse(d)
         @_delegate.handle_input e
       rescue JSON::ParserError
-        $stderr.puts "Couldn't parse the input"
+        $stderr.puts "ERROR: Tactic script couldn't parse its input"
       end
     end
   end
 
+  # When the remote end closes the connection
   def unbind
     EventMachine::stop_event_loop
   end
@@ -63,13 +54,14 @@ end
 class TacticHelper
   def initialize
     @_todos = []
-    @_data = {}
     @_manager = nil
-
-    @_should_run = true
-    @_pending = [:destination, :port, :domain, :resource, :user]
+    set_initial_state
   end
 
+  # ---------------------------------------
+  # API methods for client
+  # ---------------------------------------
+  
   def when *requirements, &block
     @_todos << {:requirements => requirements.map{|r| r.to_sym}, :block => block}
   end
@@ -100,9 +92,13 @@ class TacticHelper
     @_manager.relay_data new_truth
   end
 
-  def terminate
-    @_should_run = false
-    @_manager.stop_manager
+  def recycle_tactic
+    # Reset to original state
+    set_initial_state
+    
+    # Tell the tactics engine that we are ready to be used again
+    msg = {:recycle=> true}
+    @_manager.relay_data msg
   end
 
   def run
@@ -112,28 +108,32 @@ class TacticHelper
     end
   end
 
+  # ---------------------------------------
+  # Delegate methods
+  # ---------------------------------------
+
   def handle_input input
     deal_with_input input
     execute_user_blocks
-  end
-
-  def terminate_tactic
-    @_should_run = false
-    @_manager.stop_manager
   end
 
   def manager= manager
     @_manager = manager
   end
 
+  # ---------------------------------------
+
 private
+  def set_initial_state
+    @_data = {}
+    @_pending = [:destination, :port, :domain, :resource, :user]
+  end
+
   def execute_user_blocks
     # Don't execute any custom code before all the prerects are dealt with
     return if @_pending.size > 0
 
     @_todos.each do |todo|
-      break unless @_should_run
-
       all_reqs_satisfied = true
       todo[:requirements].each do |req|
         all_reqs_satisfied = false unless @_data[req]
@@ -151,9 +151,6 @@ private
   end
 
   def deal_with_input data
-    # Allow the tactic to terminate us
-    @_should_run = false if data['terminate']
-
     # We have received new truths
     if data['truths'] then
       received_truths = data['truths']

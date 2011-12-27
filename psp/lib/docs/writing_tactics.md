@@ -4,9 +4,12 @@ specifies the data it needs to evaluate its tactic as *truth-needs*.
 The *truth-needs* might be satisfied in any order, or not at all if there is no
 tactic that can provide the truth, or all the ones that do fail.
 
+The tactic solver is the entity responsible for finding tactics to provide
+truths. In practise that means that tactics themselves never interact.
+
 # Definition
 
-Each tactic lives in a subfolder of the tactic folder.
+Each tactic lives in a subfolder of the tactics folder.
 The subfolder must contain a config.yml file specifying what kinds of truths
 (resource) the tactic provides, along with what static truth requirements the
 tactic has. The configuration should also specify a unique tactic name, a human
@@ -16,8 +19,7 @@ of supporting files needed.
 
 ## Configuration
 
-The following is a Cambridge inspired sample configuration showcasing some of the configuration
-options:
+The following is a Cambridge inspired sample configuration showcasing some of the configuration options:
 
     name: sample
     description: Illustrates how to configure tactics
@@ -40,7 +42,7 @@ Capitalized words in the *provides* and *requires* section carry special meaning
 ### The following are available in both the provides and requires sections
 
 - **Local** is substituted with the name of the node the tactic is executed on.
-  On a node Alpha, the sample_this resource will therefore only match sample_this@Alpha
+  On a node Alpha, the sample_this resource will therefore only match sample_this@Alpha(:[\d]*)?
   truth requests.
 
 
@@ -55,6 +57,26 @@ The following assumes a request for gowns_to_be_worn@Darwin:20 on node Alpha.
   truth port_from_year_20@Alpha:2222 would be issued.
 - **Resource** is replaced with the truth requested. A request for the truth
   gowns_to_be_worn@Alpha:2534 would be issued.
+
+## Tactic life cycle (aka. recycling for a sunstainable solver)
+
+When a truth is needed that doesn't exist in the tactic solver's bag of truth,
+the tactic solver executes tactics that are candidates for providing the truth.
+Tactics are run as separate processes and have a substantial overhead on
+startup. The tactic solver will therefore do its best to use an already started
+tactic. This requires some cooperation from the tactics:
+
+When a tactic has finished its execution, instead of terminating, it should
+report to the tactic solver that it is recycling. When recycling, a tactic
+should remove all state that it held from the previous invocation, and be in
+the same state it was in when originally started.
+
+A tactic can choose to remain active: never terminate or recycle. In that state
+the tactic will receive updates for all truths it has expressed interests in,
+and can therefore itself emit new truths to the tactic solvers in response to
+other changing truths. 
+A tactic that has remained active, will not receive requests to resolve new
+truths. Instead a fresh tactic will be spawned, at great cost. It is therefore recommended that tactics do not remain active, but instead recycle as quickly as possible. The work that would normally have been performed by a tactic remaining active, can in most cases instead be given to the tactics daemon process (implemented shortly).
 
 ## Communication with Tactic
 
@@ -107,6 +129,11 @@ Requests for additional truths:
 If only the port is provided, the same domain is used as in the orignal
 request. If only a domain is provided, the domain is used without a port.
 The destination parameter, if provided should take the form DOMAIN:PORT.
+
+A tactic can tell the solver that it is ready to be recycled using the following
+message:
+
+    {"recycle":true}
 
 ## Default parameters
 
@@ -184,9 +211,8 @@ The following is a example of it's use:
     helper.when :my_truth do |h,t|
       # access the truth as t[:my_truth][:value]
 
-      # tell the tactic solver that it can terminate this
-      # tactic instance.
-      helper.terminate_tactic
+      # tell the tactic solver that the tactic is ready to be reused.
+      helper.recycle_tactic
     end
 
     # we need to initialize the tactic, otherwise nothing will ever happen

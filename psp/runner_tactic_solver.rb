@@ -125,7 +125,6 @@ while not(input =~ /exit/i)
   input = RunHelper.get_input
 end
 # Important to shut it down when done, so the tactic daemons are killed
-tactic_solver.shutdown
 tactic_solver.stop
 
 puts "\n\n"

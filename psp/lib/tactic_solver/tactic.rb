@@ -3,13 +3,17 @@ require 'timeout'
 require 'open3'
 
 module TacticSolver
+  # TacticCommunicatorDelegate
+  # - register_ready_for_duty tactic_comm
+  #     Called when the tactic script has connected to socket.
+  #     It passes itself as the argument.
+  # - received_data data
+  #     Called with new data from the tactic
   class TacticCommunicator < EventMachine::Connection
-    def initialize tactic
-      @_tactic = tactic
+    def initialize delegate
+      @_delegate = delegate
       super
-
-      @_tactic.communication_agent = self
-      @_tactic.send_initial_data
+      @_delegate.register_ready_for_duty self
     end
 
     def stop_communicator
@@ -24,7 +28,7 @@ module TacticSolver
       data.split("\n").each do |d|
         begin
           e = JSON.parse(d)
-          @_tactic.deal_with e
+          @_delegate.received_data e
         rescue JSON::ParserError
           $stderr.puts "Couldn't parse the input"
         end
@@ -32,12 +36,143 @@ module TacticSolver
     end
 
     def unbind
-      @_tactic.communication_agent = nil
-      @_tactic.stop_tactic
+      @_delegate.terminated
     end
     
   end
 
+  # -----------------------------------------------------
+  # TacticThreadOwner (the owner of the thread pool)
+  # - tactic_thread_ready self
+  #     Called when the tactic thread is ready for work
+  # - name
+  #     Returns the name of the node
+  # TacticThreadDelegate (the tactic using the thread)
+  # - tactic_received_data data
+  #     Called when there is new data
+  # - stop_tactic
+  #     Terminates the tactic class
+  class TacticThread
+    def initialize dir_name, owner
+      @_dir_name = dir_name
+      @_owner = owner
+      @_delegate = nil
+      @_communicator = nil
+      @_ready = false
+
+      setup_tactic
+      warm_up_the_engine
+    end
+
+    def delegate= delegate
+      @_delegate = delegate
+    end
+
+    def self.print_error name, message
+      puts "ERROR [name]: #{message}"
+    end
+
+    def register_ready_for_duty tactic_communicator
+      @_ready = true
+      @_communicator = tactic_communicator
+      @_owner.tactic_thread_ready self
+    end
+
+    # TacticCommunicatorDelegate method
+    def received_data data
+      # Let the delegate deal with the data
+      @_delegate.tactic_received_data data
+
+      # Check if the tactic is ready to be recycled
+      if data["recycle"] then
+        # Tell the delegate to shut down
+        @_delegate.stop_tactic
+
+        # Clean up the state
+        @_delegate = nil
+
+        # And let the tactic thread pool know
+        # we are ready for reuse
+        @_owner.tactic_thread_ready self
+      end
+    end
+
+    # Called by the tactic when it wants to communicate
+    # with the tactic script
+    def send_data data
+      @_communicator.pass_on_data data
+    end
+
+    def terminated
+      puts "The tactic script #{@_name} terminated?"
+      # TODO: Inform the thread pool (owner) of the death
+    end
+
+    # Accessor methods
+    def name
+      @_name
+    end
+    def description
+      @_description
+    end
+    def provides
+      @_provides
+    end
+    def requires
+      @_requires
+    end
+    def dir_name
+      @_dir_name
+    end
+
+  private
+    def setup_tactic
+      @_tactic_folder = File.join(File.dirname(__FILE__), "..", "..", 
+          "tactics/#{@_dir_name}")
+      config_path = @_tactic_folder + "/config.yml"
+      config = YAML::load(File.open(config_path))
+      @_name = config['name']
+      @_description = config['description']
+
+      @_provides = config['provides'].map {|p| Tactic.deal_with_magic p, @_owner.name}
+      @_requires = config['requires']
+      @_executable = config['executable']
+
+      check_file_exists @_executable
+
+    rescue Errno::ENOENT
+      TacticThread.print_error @_name, "Missing configuration file: " \
+          + "Please ensure #{@_tactic_folder}/config.yml exists"
+
+    end
+
+    def socket_name
+      unless @socket_name then
+        long_name = (0...50).map{ ('a'..'z').to_a[rand(26)] }.join
+        @socket_name = "/tmp/signpost-#{long_name}.sock"
+      end
+      @socket_name
+    end
+
+    def warm_up_the_engine
+      EventMachine::start_unix_domain_server(socket_name, TacticCommunicator, self)
+      File.chmod(0777, socket_name)
+      full_executable = "#{@_tactic_folder}/#{@_executable} #{socket_name}"
+      IO.popen(full_executable)
+      # tactic_script = fork {exec "#{@_tactic_folder}/#{@_executable} #{socket_name}"}
+      # Process.detach(tactic_script)
+    end
+
+    def check_file_exists *files
+      files.each do |file|
+        file_path = "#{@_tactic_folder}/#{file}"
+        print_error "#{file} is missing" unless File.exists? file_path
+      end
+    end
+  end
+
+  # -----------------------------------------------------
+  
   class FailedTactic < Exception
     def initialize tactic, description
       @tactic = tactic
@@ -48,6 +183,8 @@ module TacticSolver
       "Tactic #{@tactic} failed: #{@desc}"
     end
   end
+  
+  # -----------------------------------------------------
 
   class Tactic
     include Bud
@@ -65,29 +202,27 @@ module TacticSolver
 
     #---------------------------
     
-    def initialize dir_name, solver, node_name, user_info, options = {}
-      @_dir_name = dir_name
+    def initialize tactic_thread, solver, node_name, user_info, options = {}
+      @_tactic_thread = tactic_thread
       @_node_name = node_name
-      @_tactic_folder = File.join(File.dirname(__FILE__), "..", "..", 
-          "tactics/#{@_dir_name}")
       @_solver = solver
-      @_parameters = {}
       @_user_info = user_info
       @_what = options[:what] || nil
       @_perform_delayed_execution = @_what ? true : false
-      @_is_running = true
-
-      setup_tactic
 
       super options
+
       register_callbacks
+      
+      # Register with the tactic thread, so we get the delegate callbacks
+      @_tactic_thread.delegate = self
+
       self.run_bg
     end
 
     def register_callbacks
       # When we get truths we need, then pass them on to the program
       self.register_callback(:needed_truth_scratch) do |data|
-        # TODO: Make this happen in a thread?
         data.to_a.each do |d|
           what, source, user_info, value = d
           pass_on_truth what, source, value
@@ -96,20 +231,20 @@ module TacticSolver
     end
 
     def stop_tactic
-      return unless @_is_running
-
       # Remove subscriptions from solver
       self.sync_do {remove_subscriptions <~ [[@_solver, [ip_port]]]}
-      @_communication_agent.stop_communicator if @_communication_agent
-      self.stop
-
-      # Remove the unix-socket we created as it is no longer needed
-      FileUtils.rm(socket_name)
-
-      @_is_running = false
+      @me = self
+      EM::add_timer(1) do
+        @me.stop
+      end
     end
 
     #---------------------------
+
+    # TacticThreadDelegate:
+    def tactic_received_data data
+      self.deal_with data
+    end
 
     def do_execute
       @_perform_delayed_execution = false
@@ -120,9 +255,11 @@ module TacticSolver
       @_what = what
       # Do we provide what is required?
       does_provide_what = false
-      @_provides.each do |provide|
+      @_tactic_thread.provides.each do |provide|
         does_provide_what = true if @_what =~ /^#{provide}/
       end
+
+      @_name = @_tactic_thread.name
 
       unless does_provide_what then
         puts "[#{@_name}] does not provide #{@_what}" 
@@ -135,12 +272,13 @@ module TacticSolver
       end
 
       set_the_magic_variables what
-      start_program
 
       # Find what the tactic requires
-      needed_parameters = requirements @_requires
+      needed_parameters = requirements @_tactic_thread.requires
       # Add requirements
       needed_parameters.each {|p| add_requirement p}
+
+      send_initial_data
     end
 
     def send_initial_data
@@ -186,6 +324,9 @@ module TacticSolver
 
       # Log messages
       data["logs"].each {|log_msg| print_status log_msg} if data["logs"]
+
+      # Should we terminate this tactic now?
+      stop_tactic if data["terminate"]
     end
 
     def self.print_error name, description
@@ -206,7 +347,6 @@ module TacticSolver
       end
     end
 
-  private
     def self.deal_with_magic provision, node_name
       prov = provision
       ({"Local" => node_name}).each_pair do |arg, val|
@@ -215,6 +355,7 @@ module TacticSolver
       prov
     end
 
+  private
     def deal_with_magic provision
       Tactic.deal_with_magic provision, @_node_name
     end
@@ -252,17 +393,7 @@ module TacticSolver
         truths << new_truth
       end
       data = {:truths => truths}
-      # Things at times happen out of order.
-      # If that is the case, and we don't yet have
-      # a communication agent, then we add the data
-      # to the list of pending data items, and deliver
-      # them once we have a communication agent!
-      if @_communication_agent then
-        @_communication_agent.pass_on_data data
-      else
-        @_pending_pass_on_data ||= []
-        @_pending_pass_on_data << data
-      end
+      @_tactic_thread.send_data data
     end
 
     def pass_on_truth truth, source, value
@@ -299,50 +430,6 @@ module TacticSolver
       @_port = vars[:port]
       @_destination = vars[:destination]
       @_resource = vars[:resource]
-    end
-
-    def setup_tactic
-      config_path = @_tactic_folder + "/config.yml"
-      config = YAML::load(File.open(config_path))
-      @_name = config['name']
-      @_description = config['description']
-
-      @_provides = config['provides'].map {|p| deal_with_magic p}
-      @_requires = config['requires']
-      @_dynamic_requirements = config['has_dynamic_requirements'] || false
-
-      @_executable = config['executable']
-
-      check_file_exists @_executable
-
-    rescue Errno::ENOENT
-      Tactic.print_error @_name, "Missing configuration file: " \
-          + "Please ensure #{@_tactic_folder}/config.yml exists"
-
-    end
-
-    def socket_name
-      unless @socket_name then
-        long_name = (0...50).map{ ('a'..'z').to_a[rand(26)] }.join
-        @socket_name = "/tmp/signpost-#{long_name}.sock"
-      end
-      @socket_name
-    end
-
-    def start_program
-      EventMachine::start_unix_domain_server(socket_name, TacticCommunicator, self)
-      File.chmod(0777, socket_name)
-      full_executable = "#{@_tactic_folder}/#{@_executable} #{socket_name}"
-      IO.popen(full_executable)
-      # tactic_script = fork {exec "#{@_tactic_folder}/#{@_executable} #{socket_name}"}
-      # Process.detach(tactic_script)
-    end
-
-    def check_file_exists *files
-      files.each do |file|
-        file_path = "#{@_tactic_folder}/#{file}"
-        print_error "#{file} is missing" unless File.exists? file_path
-      end
     end
 
     def print_status description

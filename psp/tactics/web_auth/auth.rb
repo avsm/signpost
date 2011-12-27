@@ -23,7 +23,7 @@ tactic.when :web_auth_url do |helper, truths|
 
   # provide_truth: TRUTH, VALUE, TTL, GLOBAL?
   helper.provide_truth truths[:what][:value], answer, 100, false
-  helper.terminate_tactic
+  helper.recycle_tactic
   
 end
 

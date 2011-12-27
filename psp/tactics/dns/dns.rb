@@ -15,7 +15,7 @@ tactic.when do |helper, truths|
   end
   # provide_truth: TRUTH, VALUE, TTL, GLOBAL?
   helper.provide_truth truths[:what][:value], ips, 100, true
-  helper.terminate_tactic
+  helper.recycle_tactic
   
 end
 
