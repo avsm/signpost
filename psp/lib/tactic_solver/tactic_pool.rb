@@ -9,6 +9,7 @@ module TacticSolver
       @_tactics = []
 
       learn_about_tactics
+      start_daemons
     end
 
     def explore_truth_space_for what, user_info
@@ -38,7 +39,11 @@ module TacticSolver
     def tactic_thread_ready tactic
       pool = pool_for_name tactic.dir_name
       pool.push tactic
+    end
 
+    def daemon_thread_ready daemon
+      puts "Daemon thread started for #{daemon.name}"
+      Tactic.new daemon, @_ip_port, @_node_name, "DAEMON" 
     end
 
     # -----------------------------------------
@@ -74,6 +79,16 @@ module TacticSolver
       # Find and initialize all tactics
       Dir.foreach("tactics") do |dir_name|
         @_tactics << (Tactic.provides dir_name, @_node_name) if File.directory?("tactics/#{dir_name}") and !(dir_name =~ /\.{1,2}/)
+      end
+    end
+
+    def start_daemons
+      @_tactics.each do |tactic|
+        # TacticDirName, Owner, IS_DAEMON
+        if tactic[:has_daemon] then
+          puts "> Spawning daemon for #{tactic[:name]}"
+          TacticThread.new tactic[:dir_name], self, true
+        end
       end
     end
   end
