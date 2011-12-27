@@ -104,7 +104,7 @@ module TacticSolver
     end
 
     def terminated
-      puts "The tactic script #{@_name} terminated?"
+      puts "The tactic script #{@_name} terminated."
       # TODO: Inform the thread pool (owner) of the death
     end
 
