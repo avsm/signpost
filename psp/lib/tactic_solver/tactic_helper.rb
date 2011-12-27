@@ -2,6 +2,8 @@
 # executing code, etc.
 
 require 'rubygems'
+require 'eventmachine'
+require 'pp'
 
 $stdout.sync = true
 $stderr.sync = true
@@ -14,10 +16,58 @@ rescue LoadError
   require "json/pure"
 end
 
+unless ARGV.size == 1 then
+  puts "The tactic should be called with a unix socket for communication"
+  exit 1
+end
+unix_socket = ARGV[0]
+
+class CommunicationManager < EventMachine::Connection
+  def initialize delegate
+    @_delegate = delegate
+    super
+
+    @_delegate.manager = self
+  end
+
+  def stop_manager
+    # For some reason the closing of the connection_after_write
+    # seems to happen immediately, rathen than after write.
+    # Therefore, delay the closing a little while.
+    EM.add_timer(1) do
+      self.close_connection_after_writing()
+    end
+  end
+
+  def relay_data data
+    send_data "#{data.to_json}\n"
+  end
+
+  def receive_data data
+    data.split("\n").each do |d|
+      begin
+        e = JSON.parse(d)
+        @_delegate.handle_input e
+      rescue JSON::ParserError
+        $stderr.puts "Couldn't parse the input"
+      end
+    end
+  end
+
+  def unbind
+    EventMachine::stop_event_loop
+  end
+  
+end
+
 class TacticHelper
   def initialize
     @_todos = []
     @_data = {}
+    @_manager = nil
+
+    @_should_run = true
+    @_pending = [:destination, :port, :domain, :resource, :user]
   end
 
   def when *requirements, &block
@@ -26,7 +76,7 @@ class TacticHelper
 
   def log msg
     logs = {:logs => [msg]}
-    $stdout.puts logs.to_json
+    @_manager.relay_data logs
   end
 
   def need_truth what, options = {}
@@ -36,7 +86,7 @@ class TacticHelper
     need = add_option need, :destination, options
 
     needs = {:need_truths => [need]}
-    $stdout.puts needs.to_json
+    @_manager.relay_data needs
   end
 
   def provide_truth what, value, ttl = 0, global = false, options = {}
@@ -47,35 +97,33 @@ class TacticHelper
       :global => global
     }
     new_truth = {:provide_truths => [truth.merge(options)]}
-    $stdout.puts new_truth.to_json
+    @_manager.relay_data new_truth
   end
 
   def terminate
     @_should_run = false
+    @_manager.stop_manager
   end
 
   def run
-    @_should_run = true
-    @_pending = [:destination, :port, :domain, :resource, :user]
-
-    while @_should_run do
-      value = $stdin.readline("\n")
-
-      begin
-        data = JSON.parse(value)
-        deal_with_input data
-
-        execute_user_blocks
-
-      rescue JSON::ParserError
-        $stderr.puts "Couldn't parse the input"
-
-      end
+    socket_name = ARGV[0]
+    EventMachine::run do
+      EventMachine::connect_unix_domain(socket_name, CommunicationManager, self)
     end
+  end
+
+  def handle_input input
+    deal_with_input input
+    execute_user_blocks
   end
 
   def terminate_tactic
     @_should_run = false
+    @_manager.stop_manager
+  end
+
+  def manager= manager
+    @_manager = manager
   end
 
 private
@@ -84,6 +132,8 @@ private
     return if @_pending.size > 0
 
     @_todos.each do |todo|
+      break unless @_should_run
+
       all_reqs_satisfied = true
       todo[:requirements].each do |req|
         all_reqs_satisfied = false unless @_data[req]
@@ -91,7 +141,6 @@ private
 
       # Execute the user block
       todo[:block].call(self, @_data) if all_reqs_satisfied
-      exit 0 unless @_should_run
     end
 
   end

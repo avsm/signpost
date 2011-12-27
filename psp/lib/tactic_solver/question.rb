@@ -22,8 +22,10 @@ module TacticSolver
       super options
 
       self.run_bg
+
       self.register_callback(:needed_truth_scratch) do |d|
         @return_value = @callback.call(d)
+        terminate_question
         @working = false
       end
     end
@@ -32,11 +34,17 @@ module TacticSolver
       # Spin lock until the value is returned
       while @working do end
 
-      # terminate the question
-      self.stop
-
       # Returns what was returned by the 
       @return_value
+    end
+
+  private
+    def terminate_question
+      @hero = self
+      EM.add_timer(0.1) do
+        @hero.sync_do {@hero.remove_subscriptions <~ [[@solver, [ip_port]]]}
+        @hero.stop
+      end
     end
   end
 end
