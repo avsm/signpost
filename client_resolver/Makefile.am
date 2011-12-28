@@ -51,6 +51,8 @@ libnss_signpost_la_LDFLAGS = \
 	-shrext .so.2 \
 	-lldns \
 	-lunbound \
+	-lcurl \
+	-ljansson \
 	`pkg-config --libs avahi-client`
 
 

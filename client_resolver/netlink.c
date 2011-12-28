@@ -38,7 +38,20 @@
 
 #include <unbound.h>
 
+#include <curl/curl.h>
+
 #include "ifconf.h"
+
+char reply[3000];
+int reply_len;
+
+static size_t write_data(void *ptr, size_t size, 
+        size_t nmemb, void *stream) {
+    int wrriten = size;
+    memcpy(reply, ptr, size);
+    //  int written = fwrite(ptr, size, nmemb, (FILE *)stream);
+        return written;
+}
 
 int ifconf_acquire_addresses(const char *name, 
         struct address **_list, unsigned *_n_list) {
@@ -56,9 +69,28 @@ int ifconf_acquire_addresses(const char *name,
         struct ub_result* result;
         int retval, i;
 
-        //fprintf(stderr, "ifconf_acquire_addresses\n");
+        char *server = "127.0.0.1:8080";
+        char url[3000];
 
-        /*  create context */
+        fprintf(stderr, "ifconf_acquire_addresses \n");
+
+        URL *curl;
+        CURLcode res;
+    
+        curl = curl_easy_init();
+        if(curl) {
+            sprintf(url, "http://%s/address/%s", server, name);
+            curl_easy_setopt(curl, CURLOPT_URL,url);
+            /*  send all data to this function  */ 
+            //curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
+            fprintf(stderr, "Sending http request\n");
+            res = curl_easy_perform(curl);
+                    
+            //printf("read:%s\n", reply);
+
+            /*  always cleanup */ 
+            curl_easy_cleanup(curl);
+        }
         ctx = ub_ctx_create();
         if(!ctx) {
             printf("error: could not create unbound context\n");
@@ -67,6 +99,9 @@ int ifconf_acquire_addresses(const char *name,
         }
 
         //ub_ctx_debuglevel(ctx, 10);
+
+        //requesting ip address from signpost
+
 
         /*  read /etc/resolv.conf for DNS proxy settings (from DHCP) */
         if( (retval=ub_ctx_resolvconf(ctx, "/etc/resolv.conf")) != 0) {

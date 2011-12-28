@@ -34,26 +34,17 @@ class NameResolver
   end
 
   def call(env)
-				request = Rack::Request.new(env)
-				puts env.inspect
-				name = env['REQUEST_PATH'].scan(/[a-zA-Z\.]+/)
+    request = Rack::Request.new(env)
+    puts env.inspect
+    name = env['REQUEST_PATH'].scan(/[a-zA-Z\.]+/)
     # We are trying to resolve an IP
     request = {
-      :what => "ip_for_domain@#{name[0]}",
+      :what => "ip_for_domain@#{name[1]}",
       :user_info => @@user_info
     }
 
     @@tactic_solver.send(request.to_json)
-#    reply = JSON.parse(@@tactic_solver.recv)
-
-#    if reply["status"] == "OK" then
-#      ips = reply["ips"]
-#      ips.each do |ip|
-#        transaction.respond!(ip)
-#      end
-#    end
-
-				body = [(@@tactic_solver.recv)]
+    body = [(@@tactic_solver.recv)]
     [
       200,
       { 'Content-Type' => 'application/json' },

@@ -36,6 +36,12 @@
 
 #include <unbound.h>
 
+#include <curl/curl.h>
+
+//json processing library
+#include <string.h>
+#include <jansson.h>
+
 #include "nss-signport.h"
 #include "signpost-avahi.h"
 
@@ -103,7 +109,6 @@ enum nss_status _nss_signpost_gethostbyname4_r(
                 char *buffer, size_t buflen,
                 int *errnop, int *h_errnop,
                 int32_t *ttlp) {
-    unsigned lo_ifi;
     char hn[HOST_NAME_MAX+1];
     size_t l, idx, ms;
     char *r_name;
@@ -112,29 +117,21 @@ enum nss_status _nss_signpost_gethostbyname4_r(
     unsigned n_addresses = 0, n;
 
     /* lookup signpost servers */
-    if (lookup_local_sps_server() != 0) 
+/*    if (lookup_local_sps_server() != 0) 
         fprintf(stderr, "Avahi Lookup failed\n");
     else 
         fprintf(stderr, "Avahi Lookup succeeded\n");
-
+  */
     memset(hn, 0, sizeof(hn));
     if (gethostname(hn, sizeof(hn)) < 0) {
         *errnop = errno;
         *h_errnop = NO_RECOVERY;
         return NSS_STATUS_UNAVAIL;
     }
-    /*
-       if (strcasecmp(name, hn) != 0) {
-     *errnop = ENOENT;
-     *h_errnop = HOST_NOT_FOUND;
-     return NSS_STATUS_NOTFOUND;
-     }
-     */
+
     /* If this fails, n_addresses is 0. Which is fine */
     ifconf_acquire_addresses(name, &addresses, 
             &n_addresses);
-    /* If this call fails we fill in 0 as scope. Which is fine */
-    lo_ifi = if_nametoindex(LOOPBACK_INTERFACE);
 
     l = strlen(name);
     ms = ALIGN(l+1)+ALIGN(sizeof(struct gaih_addrtuple))*(n_addresses > 0 ? n_addresses : 2);
@@ -144,7 +141,6 @@ enum nss_status _nss_signpost_gethostbyname4_r(
         free(addresses);
         return NSS_STATUS_TRYAGAIN;
     }
-
 
     /* First, fill in hostname */
     r_name = buffer;
@@ -156,30 +152,6 @@ enum nss_status _nss_signpost_gethostbyname4_r(
         *errnop = ENOMEM;
         *h_errnop = NO_RECOVERY;
         return NSS_STATUS_NOTFOUND;
-
-        /* 
-         * // Second, fill in IPv6 tuple 
-        r_tuple = (struct gaih_addrtuple*) (buffer + idx);
-        r_tuple->next = r_tuple_prev;
-        r_tuple->name = r_name;
-        r_tuple->family = AF_INET6;
-        memcpy(r_tuple->addr, LOCALADDRESS_IPV6, 16);
-        r_tuple->scopeid = (uint32_t) lo_ifi;
-
-        idx += ALIGN(sizeof(struct gaih_addrtuple));
-        r_tuple_prev = r_tuple;
-
-        // Third, fill in IPv4 tuple 
-        r_tuple = (struct gaih_addrtuple*) (buffer + idx);
-        r_tuple->next = r_tuple_prev;
-        r_tuple->name = r_name;
-        r_tuple->family = AF_INET;
-        *(uint32_t*) r_tuple->addr = LOCALADDRESS_IPV4;
-        r_tuple->scopeid = (uint32_t) lo_ifi;
-
-        idx += ALIGN(sizeof(struct gaih_addrtuple));
-        r_tuple_prev = r_tuple;
-        */
     }
 
     /* Fourth, fill actual addresses in, but in backwards order */
@@ -225,11 +197,11 @@ static enum nss_status fill_in_hostent(
 
     alen = PROTO_ADDRESS_SIZE(af);
 
-    if (lookup_local_sps_server() != 0) 
+/*    if (lookup_local_sps_server() != 0) 
         fprintf(stderr, "Avahi Lookup failed\n");
     else 
         fprintf(stderr, "Avahi Lookup succeeded\n");
-
+  */
     ifconf_acquire_addresses((const char *)hn, &addresses, 
             &n_addresses);
 
@@ -280,12 +252,6 @@ static enum nss_status fill_in_hostent(
         *h_errnop = NO_RECOVERY;
         free(addresses);
         return NSS_STATUS_TRYAGAIN;        
-        /*/if (af == AF_INET)
-            *(uint32_t*) r_addr = LOCALADDRESS_IPV4;
-        else
-            memcpy(r_addr, LOCALADDRESS_IPV6, 16);
-
-        idx += ALIGN(alen);  */
     }
 
     /* Fourth, add address pointer array */
@@ -481,96 +447,189 @@ enum nss_status _nss_signpost_gethostbyaddr_r(
             NULL);
 }
 
+struct MemoryStruct {
+  char *memory;
+  size_t size;
+};
+
+static size_t
+WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+    size_t realsize = size * nmemb;
+    struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+    mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+    if (mem->memory == NULL) {
+        /* out of memory! */ 
+        printf("not enough memory (realloc returned NULL)\n");
+        exit(EXIT_FAILURE);
+    }
+
+    memcpy(&(mem->memory[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->memory[mem->size] = 0;
+
+    return realsize;
+}
+
 int ifconf_acquire_addresses(const char *name, 
         struct address **_list, unsigned *_n_list) {
 
-        struct rtgenmsg *gen;
-        int fd, r, on = 1;
-        uint32_t seq = 4711;
-        struct address *list = NULL;
-        unsigned n_list = 0;
-        struct ub_ctx* ctx;
-        struct ub_result* result;
-        int retval, i;
+    int fd, r, i;
+    struct address *list = NULL;
+    unsigned n_list = 0;
+    struct ub_ctx* ctx;
+    struct ub_result* result;
+    int retval;
 
-        //fprintf(stderr, "ifconf_acquire_addresses\n");
+    struct in_addr in;
+    json_t *root;
+    json_error_t error;
+    json_t *ips;
 
-        /*  create context */
-        ctx = ub_ctx_create();
-        if(!ctx) {
-            printf("error: could not create unbound context\n");
-            retval = -1;
-            goto finish;
+    //fprintf(stderr, "ifconf_acquire_addresses\n");
+
+    const char *server = "127.0.0.1:8080";
+    char url[3000];
+
+    fprintf(stderr, "ifconf_acquire_addresses \n");
+
+    CURL *curl;
+    CURLcode res;
+        struct MemoryStruct chunk;
+    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */ 
+    chunk.size = 0;    /* no data at this point */ 
+   
+    curl = curl_easy_init();
+    if(curl) {
+        sprintf(url, "http://%s/address/%s", server, name);
+        curl_easy_setopt(curl, CURLOPT_URL,url);
+        /*  send all data to this function  */ 
+        //curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
+        /* send all data to this function  */ 
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+
+        /* we pass our 'chunk' struct to the callback function */ 
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);    
+
+        res = curl_easy_perform(curl);
+
+        /*  always cleanup */ 
+        curl_easy_cleanup(curl);
+
+        fprintf(stderr, "result: %s\n", chunk.memory);
+        
+        //load json string
+        root = json_loads(chunk.memory, 0, &error);
+        if(!root) {
+            fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+            return 1;
+        }
+        ips = json_object_get(root, "ips");
+        if(!json_is_array(ips)) {
+            fprintf(stderr, "error: commits is not an array\n");
+            return 1;
         }
 
-        //ub_ctx_debuglevel(ctx, 10);
-
-        /*  read /etc/resolv.conf for DNS proxy settings (from DHCP) */
-        if( (retval=ub_ctx_resolvconf(ctx, "/etc/resolv.conf")) != 0) {
-            fprintf(stderr, "error reading resolv.conf: %s. errno says: %s\n", 
-                    ub_strerror(retval), strerror(errno));
-            //retval = errno;
-            //goto finish;
+        ips = json_array_get(ips, 0);
+        if(!json_is_array(ips)) {
+            fprintf(stderr, "error: commits is not an array\n");
+            return 1;
         }
 
-        /*  read /etc/hosts for locally supplied host addresses */
-        if( (retval=ub_ctx_hosts(ctx, "/etc/hosts")) != 0) {
-            fprintf(stderr, "error reading hosts: %s. errno says: %s\n", 
-                    ub_strerror(retval), strerror(errno));
-            //retval = errno;
-            //goto finish;
-        }
-        /*  query for webserver */
-        retval = ub_resolve(ctx, name, 
-                1 /*  TYPE A (IPv4 address) */, 
-                1 /*  CLASS IN (internet) */, &result);
-        if(retval != 0) {
-            fprintf(stderr, "error resolving: %s. errno says: %s\n", 
-                    ub_strerror(retval), strerror(errno));
-            retval = -ENOENT;
-            goto finish;
-        }
+        for(i = 0; i < json_array_size(ips); i++) {
+            json_t *ip =  json_array_get(ips, i);
+            if(!json_is_string(ip)) {
+                fprintf(stderr, "error: ip %d: id is not a string\n", i + 1);
+                return 1;
+            }
 
-        if(!result->havedata) {
-           //fprintf(stderr, "no response found\n"); 
-            retval = -ENOENT;
-            goto finish;
-        }
-
-
-        while(result->data[n_list]) {
             list = realloc(list, (n_list+1) * sizeof(struct address));
             if (!list) {
                 retval = -ENOMEM;
                 goto finish;
             }
-                 struct in_addr in;
-            in.s_addr = *(uint32_t *)result->data[n_list];
+            in.s_addr = inet_addr(json_string_value(ip));
+//            fprintf(stderr, "found ip %s\n", json_string_value(ip));
             fprintf(stderr, "found ip %s\n", inet_ntoa(in));
             list[n_list].family = AF_INET;
             list[n_list].scope = 1; //ifaddrmsg->ifa_scope;
-            memcpy(list[n_list].address, result->data[n_list], 4);
+            memcpy(list[n_list].address, &in.s_addr, 4);
             list[n_list].ifindex = 1; //ifaddrmsg->ifa_index;
 
             n_list++;
         }
         r= n_list;
+    }
+    goto finish;
+    
+    /*  create context */
+    ctx = ub_ctx_create();
+    if(!ctx) {
+        printf("error: could not create unbound context\n");
+        retval = -1;
         goto finish;
-finish:
-        close(fd);
+    }
 
-        ub_resolve_free(result);
-        ub_ctx_delete(ctx);
+    //ub_ctx_debuglevel(ctx, 10);
 
-        if (r < 0)
-            free(list);
-        else {
-            qsort(list, n_list, sizeof(struct address), address_compare);
+    /*  read /etc/resolv.conf for DNS proxy settings (from DHCP) */
+    if( (retval=ub_ctx_resolvconf(ctx, "/etc/resolv.conf")) != 0) {
+        fprintf(stderr, "error reading resolv.conf: %s. errno says: %s\n", 
+                ub_strerror(retval), strerror(errno));
+    }
 
-            *_list = list;
-            *_n_list = n_list;
+    /*  read /etc/hosts for locally supplied host addresses */
+    if( (retval=ub_ctx_hosts(ctx, "/etc/hosts")) != 0) {
+        fprintf(stderr, "error reading hosts: %s. errno says: %s\n", 
+                ub_strerror(retval), strerror(errno));
+    }
+    /*  query for webserver */
+    retval = ub_resolve(ctx, name, 
+            1 /*  TYPE A (IPv4 address) */, 
+            1 /*  CLASS IN (internet) */, &result);
+    if(retval != 0) {
+        fprintf(stderr, "error resolving: %s. errno says: %s\n", 
+                ub_strerror(retval), strerror(errno));
+        retval = -ENOENT;
+        goto finish;
+    }
+
+    if(!result->havedata) {
+        //fprintf(stderr, "no response found\n"); 
+        retval = -ENOENT;
+        goto finish;
+    }
+
+
+    while(result->data[n_list]) {
+        list = realloc(list, (n_list+1) * sizeof(struct address));
+        if (!list) {
+            retval = -ENOMEM;
+            goto finish;
         }
-        //fprintf(stderr, "returned %d addr\n", n_list);
+        in.s_addr = *(uint32_t *)result->data[n_list];
+        fprintf(stderr, "found ip %s\n", inet_ntoa(in));
+        list[n_list].family = AF_INET;
+        list[n_list].scope = 1; //ifaddrmsg->ifa_scope;
+        memcpy(list[n_list].address, result->data[n_list], 4);
+        list[n_list].ifindex = 1; //ifaddrmsg->ifa_index;
 
-        return r;
+        n_list++;
+    }
+    r= n_list;
+    goto finish;
+finish:
+//    close(fd);
+
+//    ub_resolve_free(result);
+//    ub_ctx_delete(ctx);
+    if (r < 0)
+        free(list);
+    else {
+        qsort(list, n_list, sizeof(struct address), address_compare);
+
+        *_list = list;
+        *_n_list = n_list;
+    }
+    return r;
 }

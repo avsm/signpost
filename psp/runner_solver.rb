@@ -27,7 +27,7 @@ socket.bind("ipc://tactic_solver:5000")
 
 # Create the tactic solver
 tactic_solver = TacticSolver::Solver.new solver_name
-ip_port = tactic_solver.get_ip_port
+ip_port = tactic_solver.ip_port
 
 while true
   puts "Waiting for work"
@@ -48,9 +48,10 @@ while true
   ip_question = TacticSolver::Question.new options do |truths|
     ips = []
     truths.to_a.each do |truth|
-      truth_name, who, answer = truth
+      truth_name, who, user_info, answer = truth
       answer.class == Array ? answer.each {|a| ips << a} : ips << answer
     end
+    puts "\tdata: [#{ips.join(", ")}]"
     ips
   end
 
