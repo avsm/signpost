@@ -4,9 +4,13 @@ require 'rubygems'
 require 'pp'
 gem "json"
 require 'json/ext'
+require 'socket'
 
 $stdout.sync = true
 $stderr.sync = true
+
+socket_name = ARGV.first
+socket = UNIXSocket.new(socket_name)
 
 # Express a need
 need1 = {:what => "unit_test_need"}
@@ -15,11 +19,11 @@ need3 = {:what => "unit_test_need", :destination => "domainB:30"}
 need4 = {:what => "unit_test_need", :domain => "domainC", :port => 40}
   
 needs = {:need_truths => [need1, need2, need3, need4]}
-$stdout.puts needs.to_json
+socket.puts needs.to_json
 
 should_run = true
 while should_run
-  value = $stdin.readline("\n")
+  value = socket.readline("\n")
 
   begin
     data = JSON.parse(value)
@@ -41,7 +45,7 @@ while should_run
             :value => value
           }]
         }
-        $stdout.puts new_truth.to_json
+        socket.puts new_truth.to_json
       end
     end
 
