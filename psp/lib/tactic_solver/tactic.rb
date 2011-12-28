@@ -262,8 +262,7 @@ module TacticSolver
       # When we get truths we need, then pass them on to the program
       self.register_callback(:needed_truth_scratch) do |data|
         data.to_a.each do |d|
-          what, source, user_info, value = d
-          pass_on_truth what, source, value
+          pass_on_truth d
         end
       end
     end
@@ -337,14 +336,14 @@ module TacticSolver
 
     def send_initial_data
       # Pass standard facts to the tactic
-      pass_on_truths [["is_daemon", "initial_value", false],
-                      ["what", "initial_value", @_what],
-                      ["port", "initial_value", @_port],
-                      ["destination", "initial_value", @_destination],
-                      ["domain", "initial_value", @_domain],
-                      ["resource", "initial_value", @_resource],
-                      ["user", "initial_value", @_user_info],
-                      ["node_name", "initial_value", @_node_name]]
+      pass_on_truths [["is_daemon", "initial_value", @_user_info, false],
+                      ["what", "initial_value", @_user_info, @_what],
+                      ["port", "initial_value", @_user_info, @_port],
+                      ["destination", "initial_value", @_user_info, @_destination],
+                      ["domain", "initial_value", @_user_info, @_domain],
+                      ["resource", "initial_value", @_user_info, @_resource],
+                      ["user", "initial_value", @_user_info, @_user_info],
+                      ["node_name", "initial_value", @_user_info, @_node_name]]
     end
 
     # ---------------------------------------------------------
@@ -355,8 +354,8 @@ module TacticSolver
       @_name = @_tactic_thread.name
       
       # Pass standard facts to the tactic
-      pass_on_truths [["is_daemon", "initial_value", true],
-                      ["node_name", "initial_value", @_node_name]]
+      pass_on_truths [["is_daemon", "initial_value", "DAEMON", true],
+                      ["node_name", "initial_value", "DAEMON", @_node_name]]
     end
 
     # ---------------------------------------------------------
@@ -476,11 +475,12 @@ module TacticSolver
 
     def pass_on_truths truth_vals
       truths = []
-      truth_vals.each do |truth, source, value|
+      truth_vals.each do |truth, source, user_info, value|
         new_truth = {
           :what => truth,
           :source => source,
-          :value => value
+          :value => value,
+          :user => user_info
         }
         truths << new_truth
       end
@@ -488,8 +488,8 @@ module TacticSolver
       @_tactic_thread.send_data data
     end
 
-    def pass_on_truth truth, source, value
-      pass_on_truths [[truth, source, value]]
+    def pass_on_truth data
+      pass_on_truths [data]
     end
 
     def add_observer requirement

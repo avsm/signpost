@@ -8,7 +8,7 @@ require 'lib/tactic_solver/tactic_helper'
 tactic = TacticHelper.new
 
 tactic.when do |helper, truths|
-  helper.provide_truth truths[:what][:value], "tastes good", 0, true
+  helper.provide_truth truths[:what][:value], "tastes good", 0, false
   helper.recycle_tactic
 end
 
