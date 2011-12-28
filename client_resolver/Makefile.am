@@ -26,8 +26,10 @@ bin_PROGRAMS = unbound-host signpost-test signpost-avahi-publish signpost-avahi-
 
 EXTRA_DIST=bootstrap.sh # README LICENSE
 
-AM_CPPFLAGS = -include $(top_builddir)/config.h `pkg-config --cflags avahi-client`
-AM_LDFLAGS = -lldns -lunbound
+AM_CPPFLAGS = -include $(top_builddir)/config.h 
+# `pkg-config --cflags avahi-client`
+# AM_LDFLAGS = -lldns -lunbound
+
 # MAINTAINERCLEANFILES=README
 # noinst_DATA = README
 
@@ -38,9 +40,7 @@ AM_LDFLAGS = -lldns -lunbound
 
 libnss_signpost_la_SOURCES = \
 	nss-signpost.c \
-	nss-signpost.h \
-	signpost-avahi.h \
-	signpost-avahi.c
+	nss-signpost.h 
 
 #libnss_signpost_la_SOURCES += netlink.c
 
@@ -49,11 +49,8 @@ libnss_signpost_la_LDFLAGS = \
 	-module \
 	-export-dynamic \
 	-shrext .so.2 \
-	-lldns \
-	-lunbound \
 	-lcurl \
-	-ljansson \
-	`pkg-config --libs avahi-client`
+	-ljansson 
 
 
 signpost_avahi_publish_SOURCES = signpost-avahi-publish.c
