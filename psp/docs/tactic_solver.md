@@ -4,7 +4,7 @@ The tactic solver knows a set of truths about the current state of the
 world, and also has a set of tactics for generating new truths as needed.
 
 Truths are evaluated lazily on request, but the results will be cached if
-permitted.
+permitted (TTL > 0).
 
 A truth can be any kind of value associated with a key. It could for example be a boolean
 value indicating whether a port can be opened on a host machine or not, a list of
@@ -17,7 +17,7 @@ Each truth has the following set of information associated with it:
 - The holder of the truth (which node believes the truth to hold) (currently not implemented) (*holder*)
 - Information about the user requesting the truth (*user*)
 - The name of the tactic that provided the truth (*source*)
-- When the truth expires (*expires*) (currently not implemented)
+- When the truth expires (*expires*)
 - And the value of the truth itself (*value*)
 
 Truths are expressed as: RESOURCE@DOMAIN[:PORT] (*what*)
@@ -25,7 +25,7 @@ Truths are expressed as: RESOURCE@DOMAIN[:PORT] (*what*)
 
 # Examples
 
-To make it more concrete, let us take a look some examples. The following examples are
+To make it more concrete, let us take a look at some examples. The following examples are
 run on a tactic solver instance on node Alpha.
 
 
