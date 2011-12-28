@@ -9,7 +9,7 @@ tactic = TacticHelper.new
 
 tactic.when :ip_for_domain do |helper, truths|
   # We are waiting for: ip_for_domain@Destination
-  ips = truths[:ip_for_domain][:value].first
+  ips = truths[:ip_for_domain][:value]
   ip = ips.first
   result = `ping -q -c 1 #{ip}`
   if ($?.exitstatus == 0) then

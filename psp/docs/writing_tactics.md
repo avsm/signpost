@@ -21,7 +21,7 @@ of supporting files needed.
 
 The following is a Cambridge inspired sample configuration showcasing some of the configuration options:
 
-    name: sample
+    name: sample_tactic
     description: Illustrates how to configure tactics
     provides:
       - sample_(this|that)@Local(:[\d]*)?
@@ -31,7 +31,15 @@ The following is a Cambridge inspired sample configuration showcasing some of th
       - suitable_gowns@Destination
       - formal_hall_at@Domain:3215
       - Resource@Local:2534
-    executable: sample_executable.rb
+    executable: sample_tactic_executable
+    daemon: sample_daemon_executable
+
+The executable listed as executable will be executed on demand to provide the truths
+listed in the **provides** section. The daemon executable on the other hand
+will only ever be executed once, when the tactic solver starts.
+The daemon can itself express needs and provide truths, just like a tactic can.
+The **provides** and **requires** sections only apply to the tactic executable,
+and are ignored in the case of the daemon.
 
 The **provides** section is a list of truth types provided by the tactic. The
 truth types are interpreted as regular expressions and matched against the
@@ -100,6 +108,8 @@ Truths are sent to the tactic using the following syntax:
 
 ### Communication from the tactic
 
+#### Providing truths
+
 The tactic can return new truths using the syntax:
 
     {"provide_truths": [
@@ -112,6 +122,9 @@ The tactic can return new truths using the syntax:
       ]
     }
 
+
+#### More truths
+
 Requests for additional truths:
 
     {"need_truths": [
@@ -121,19 +134,48 @@ Requests for additional truths:
           "domain": DOMAIN, # domain for which truth should hold
           "port": PORT, # used in combination with the domain, if provided
           "destination": DESTINATION, # replaces domain and port if provided
-          "holder: HOLDER # Which signpost node the truth should be evaluated at. Not yet implemented.
         }
       ]
     }
 
-If only the port is provided, the same domain is used as in the orignal
-request. If only a domain is provided, the domain is used without a port.
-The destination parameter, if provided should take the form DOMAIN:PORT.
+A tactic, or more often a tactic daemon, can also observe truths. Being an
+observer will not cause a truth to be generated if it doesn't already exist,
+but the observer will be informed when it is created or changed.
+
+To become an observer, a tactic sends the following to the tactic solver:
+
+    {"observe": [
+        {
+          "resource":RESOURCE_NAME, # i.e. tcp_in
+          # optional combination of:
+          "domain": DOMAIN, # domain for which truth should hold
+          "port": PORT, # used in combination with the domain, if provided
+          "destination": DESTINATION, # replaces domain and port if provided
+        }
+      ]
+    }
+
+The combinations of domain, port and destination have different effects if they
+come from a tactic or a daemon:
+
+If a truth need or observation request is issued by a:
+
+- tactic, then if only the port is provided, the same domain is used as in the orignal
+  request. If only a domain is provided, the domain is used without a port.
+  The destination parameter, if provided should take the form DOMAIN:PORT.
+- daemon, then only the parameters passed are used. If neither of domain, port,
+  or destination are provided, the daemon will get passed all changed truths of
+  that resource type.
+
+
+#### Recycling
 
 A tactic can tell the solver that it is ready to be recycled using the following
 message:
 
     {"recycle":true}
+
+
 
 ## Default parameters
 

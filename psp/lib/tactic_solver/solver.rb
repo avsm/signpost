@@ -19,6 +19,9 @@ module TacticSolver
       # We know WHO needs WHAT and for WHAT user,
       # and the TRUTH needed
       scratch :satisfiable_truth_needs, [:who, :what, :user_info] => [:truth]
+
+      # For adapting truths to serve to anyone
+      scratch :adapted_provided_truths, [:what, :original_what, :provider, :user_info] => [:truth]
     end
 
     # Unsubscribe tactics that terminate
@@ -31,10 +34,14 @@ module TacticSolver
     # Exchange truths with tactics
     bloom :tactic_comms do
       need_truth_scratch <= need_truth.payloads
+      observe_truth_scratch <= observe_truth.payloads
 
       # A tactic subscribes to a truth so it receives new truths
       # as they come in.
       truth_subscribers <+- need_truth_scratch
+      # A tactic can also just become an observer.
+      # This will not cause a new truth to be generated
+      truth_subscribers <+- observe_truth_scratch
 
       # Let's see if we can satisfy the truths directly from our truth cache
       satisfiable_truth_needs <= (truths*need_truth_scratch).
@@ -50,7 +57,7 @@ module TacticSolver
         unless satisfiable_truth_needs.exists? {|s|
           s.what == nt.what and (s.user_info == nt.user_info or s.user_info == "GLOBAL")
         } then
-          explore_truth_space_for nt.what, nt.user_info
+          @_thread_pool.explore_truth_space_for nt.what, nt.user_info
         end
       end
       
@@ -59,6 +66,21 @@ module TacticSolver
       needed_truth <~ (provide_truth_scratch*truth_subscribers).
           pairs(:what => :what) do |p,t|
         [t.who, p] if (p.user_info == "GLOBAL" or p.user_info == t.user_info)
+      end
+
+      # If a daemon is subscribing to resource from ANY domain
+      # then we need an alternative approach.
+      # Also realise that the daemon gets the truth REGARDLESS
+      # of the user info!
+      adapted_provided_truths <= provide_truth_scratch do |t|
+        # Get the resource part of the what
+        t.what =~ /([[:graph:]]*)@.*/
+        alternative_what = "#{$1}@ANY"
+        [alternative_what, t.what, t.provider, t.user_info, t.truth]
+      end
+      needed_truth <~ (adapted_provided_truths*truth_subscribers).
+          pairs(:what => :what) do |p,t|
+        [t.who, [p.original_what, p.provider, p.user_info, p.truth]]
       end
     end
 
@@ -101,17 +123,6 @@ module TacticSolver
 
     def tactics
       @_thread_pool.tactics
-    end
-
-  private
-    def explore_truth_space_for what, user_info
-      @_thread_pool.tactics.each do |tactic|
-        tactic[:provides].each do |thing|
-          if thing.match(what) then
-            @_thread_pool.spawn_execution_for tactic, what, user_info
-          end
-        end
-      end
     end
   end
 end

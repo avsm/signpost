@@ -53,15 +53,21 @@ module TacticSolver
   # - stop_tactic
   #     Terminates the tactic class
   class TacticThread
-    def initialize dir_name, owner
+    def initialize dir_name, owner, is_daemon = false
       @_dir_name = dir_name
       @_owner = owner
       @_delegate = nil
       @_communicator = nil
       @_ready = false
+      @_is_daemon = is_daemon
 
       setup_tactic
-      warm_up_the_engine
+
+      if @_is_daemon then
+        warm_up_the_daemon
+      else
+        warm_up_the_tactic
+      end
     end
 
     def delegate= delegate
@@ -75,7 +81,11 @@ module TacticSolver
     def register_ready_for_duty tactic_communicator
       @_ready = true
       @_communicator = tactic_communicator
-      @_owner.tactic_thread_ready self
+      if @_is_daemon then
+        @_owner.daemon_thread_ready self
+      else
+        @_owner.tactic_thread_ready self
+      end
     end
 
     # TacticCommunicatorDelegate method
@@ -104,7 +114,7 @@ module TacticSolver
     end
 
     def terminated
-      puts "The tactic script #{@_name} terminated?"
+      puts "The tactic script #{@_name} terminated."
       # TODO: Inform the thread pool (owner) of the death
     end
 
@@ -124,6 +134,9 @@ module TacticSolver
     def dir_name
       @_dir_name
     end
+    def is_daemon?
+      @_is_daemon
+    end
 
   private
     def setup_tactic
@@ -137,8 +150,22 @@ module TacticSolver
       @_provides = config['provides'].map {|p| Tactic.deal_with_magic p, @_owner.name}
       @_requires = config['requires']
       @_executable = config['executable']
+      # If the tactic has listed an executable, then we need to check for it
+      check_file_exists @_executable if @_executable
 
-      check_file_exists @_executable
+      @_daemon = config['daemon']
+      # If the tactic has listed a daemon, then we need to check for it
+      check_file_exists @_daemon if @_daemon
+
+      # If the tactic has listed that is provides something, but doesn't
+      # provide an executable, then that is wrong! Remember, that only tactic
+      # executables can be relied on to provide truths on demand.
+      if @_provides and !@_executable then
+        error_msg = "Has a provide clause, but does not " \
+            + "have an executable tactic."
+        error_msg += " Recall that daemons cannot provide on demand truths" if @_daemon
+        TacticThread.print_error @_name, error_msg
+      end
 
     rescue Errno::ENOENT
       TacticThread.print_error @_name, "Missing configuration file: " \
@@ -154,10 +181,18 @@ module TacticSolver
       @socket_name
     end
 
-    def warm_up_the_engine
+    def warm_up_the_tactic
+      warm_up_the_engine @_executable
+    end
+
+    def warm_up_the_daemon
+      warm_up_the_engine @_daemon
+    end
+
+    def warm_up_the_engine executable
       EventMachine::start_unix_domain_server(socket_name, TacticCommunicator, self)
       File.chmod(0777, socket_name)
-      full_executable = "#{@_tactic_folder}/#{@_executable} #{socket_name}"
+      full_executable = "#{@_tactic_folder}/#{executable} #{socket_name}"
       IO.popen(full_executable)
       # tactic_script = fork {exec "#{@_tactic_folder}/#{@_executable} #{socket_name}"}
       # Process.detach(tactic_script)
@@ -197,21 +232,24 @@ module TacticSolver
     end
   
     bootstrap do
-      do_execute if @_perform_delayed_execution
+      perform_bootstrapping if @_perform_delayed_execution
     end
 
     #---------------------------
     
     def initialize tactic_thread, solver, node_name, user_info, options = {}
+      # For tactics
+      @_user_info = user_info
+      @_what = options[:what] || nil
+
+      # Both tactics and daemons
       @_tactic_thread = tactic_thread
       @_node_name = node_name
       @_solver = solver
-      @_user_info = user_info
-      @_what = options[:what] || nil
-      @_perform_delayed_execution = @_what ? true : false
+      @_is_daemon = @_tactic_thread.is_daemon?
+      @_perform_delayed_execution = @_is_daemon ? true : (@_what ? true : false)
 
       super options
-
       register_callbacks
       
       # Register with the tactic thread, so we get the delegate callbacks
@@ -246,8 +284,24 @@ module TacticSolver
       self.deal_with data
     end
 
-    def do_execute
+    # ---------------------------------------------------------
+    # As part of their setup tactics perform a system bootstrap
+    # where they declare their requirements to the solver, and
+    # also pass on initial data to the tactic.
+    # Daemons also bootstrap, but perform a somewhat different
+    # bootstrapping dance.
+    # ---------------------------------------------------------
+
+    def perform_bootstrapping
       @_perform_delayed_execution = false
+      @_is_daemon ? daemon_bootstrap : tactic_bootstrapping 
+    end
+
+    # ---------------------------------------------------------
+    # Tactics bootstrapping:
+    # ---------------------------------------------------------
+    
+    def tactic_bootstrapping
       execute @_what
     end
 
@@ -262,12 +316,12 @@ module TacticSolver
       @_name = @_tactic_thread.name
 
       unless does_provide_what then
-        puts "[#{@_name}] does not provide #{@_what}" 
+        print_status "does not provide #{@_what}" 
         raise FailedTactic.new(@_name, "does not provide #{@_what}")
         return
 
       else
-        puts "[#{@_name}] does provide #{@_what}"
+        print_status "does provide #{@_what}"
 
       end
 
@@ -283,29 +337,34 @@ module TacticSolver
 
     def send_initial_data
       # Pass standard facts to the tactic
-      pass_on_truths [["what", "initial_value", @_what],
+      pass_on_truths [["is_daemon", "initial_value", false],
+                      ["what", "initial_value", @_what],
                       ["port", "initial_value", @_port],
                       ["destination", "initial_value", @_destination],
                       ["domain", "initial_value", @_domain],
                       ["resource", "initial_value", @_resource],
-                      ["user", "initial_value", @_user_info]]
+                      ["user", "initial_value", @_user_info],
+                      ["node_name", "initial_value", @_node_name]]
     end
 
-    def self.provides dir_name, node_name
-      config = YAML::load(File.open("tactics/#{dir_name}/config.yml"))
-      name = config['name']
-      provides = []
-      config['provides'].each {|something| 
-        provides << Regexp.new("^#{Tactic.deal_with_magic(something, node_name)}")
-      }
-      {:name => name, :provides => provides, :dir_name => dir_name}
+    # ---------------------------------------------------------
+    # Daemons bootstrapping:
+    # ---------------------------------------------------------
 
-    rescue Errno::ENOENT
-      print_error "Missing configuration file: " \
-        + "Please ensure tactics/#{@_name}/config.yml exists"
-
+    def daemon_bootstrap
+      @_name = @_tactic_thread.name
+      
+      # Pass standard facts to the tactic
+      pass_on_truths [["is_daemon", "initial_value", true],
+                      ["node_name", "initial_value", @_node_name]]
     end
 
+    # ---------------------------------------------------------
+   
+    # Takes data received from the tactic or daemon instance,
+    # and performs the required action. That might be to forward
+    # data provided to the resolver, or request more information,
+    # or for that matter to become an observer of a resource type.
     def deal_with data
       # Providing new thruths back to the system
       if data["provide_truths"] then
@@ -322,11 +381,14 @@ module TacticSolver
         needs.each {|nd| add_requirement need_from nd}
       end
 
+      # Become a truth observer
+      if data["observe"] then
+        observes = data["observe"]
+        observes.each {|t| add_observer observation_from t}
+      end
+
       # Log messages
       data["logs"].each {|log_msg| print_status log_msg} if data["logs"]
-
-      # Should we terminate this tactic now?
-      stop_tactic if data["terminate"]
     end
 
     def self.print_error name, description
@@ -355,9 +417,39 @@ module TacticSolver
       prov
     end
 
+    def self.provides dir_name, node_name
+      config = YAML::load(File.open("tactics/#{dir_name}/config.yml"))
+      name = config['name']
+      provides = []
+      config['provides'].each {|something| 
+        provides << Regexp.new("^#{Tactic.deal_with_magic(something, node_name)}")
+      }
+      has_daemon = config["daemon"] ? true : false
+      {
+        :name => name, 
+        :provides => provides, 
+        :dir_name => dir_name, 
+        :has_daemon => has_daemon
+      }
+
+    rescue Errno::ENOENT
+      print_error "Missing configuration file: " \
+        + "Please ensure tactics/#{@_name}/config.yml exists"
+
+    end
+
   private
     def deal_with_magic provision
       Tactic.deal_with_magic provision, @_node_name
+    end
+
+    def observation_from data
+      if (!data["port"] and
+          !data["domain"] and
+          !data["destination"]) then
+        data["destination"] = "ANY"
+      end
+      need_from data
     end
 
     def need_from data
@@ -400,10 +492,12 @@ module TacticSolver
       pass_on_truths [[truth, source, value]]
     end
 
+    def add_observer requirement
+      self.sync_do {self.observe_truth <~ [[@_solver, [requirement, ip_port, @_user_info, @_name]]]}
+    end
+
     def add_requirement requirement
-      self.sync_do {
-        self.need_truth <~ [[@_solver, [requirement, ip_port, @_user_info, @_name]]]
-      }
+      self.sync_do {self.need_truth <~ [[@_solver, [requirement, ip_port, @_user_info, @_name]]]}
     end
 
     def requirements requires
@@ -433,11 +527,13 @@ module TacticSolver
     end
 
     def print_status description
-        puts "STATUS [#{@_name}]: #{description}"
+      name = "[#{@_name}#{@_is_daemon ? " daemon" : ""}]"
+      puts "STATUS #{name}: #{description}"
     end
 
     def print_error description
-      Tactic.print_error @_name, description
+      name = "[#{@_name}#{@_is_daemon ? " daemon" : ""}]"
+      Tactic.print_error name, description
     end
 
   end

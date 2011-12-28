@@ -3,7 +3,7 @@
 
 require 'rubygems'
 require 'eventmachine'
-require 'pp'
+require 'lib/tactic_solver/tactic_helpers'
 
 $stdout.sync = true
 $stderr.sync = true
@@ -54,8 +54,9 @@ end
 class TacticHelper
   def initialize
     @_todos = []
+    @_data = {}
     @_manager = nil
-    set_initial_state
+    @_ready_to_consider_processing_blocks = false
   end
 
   # ---------------------------------------
@@ -63,7 +64,7 @@ class TacticHelper
   # ---------------------------------------
   
   def when *requirements, &block
-    @_todos << {:requirements => requirements.map{|r| r.to_sym}, :block => block}
+    @_todos << {:requirements => requirements.map{|r| r.to_sym}, :block => block, :req_versions => {}}
   end
 
   def log msg
@@ -81,6 +82,16 @@ class TacticHelper
     @_manager.relay_data needs
   end
 
+  def observe_truth what, options = {}
+    observe = {:what => what}
+    observe = add_option observe, :domain, options
+    observe = add_option observe, :port, options
+    observe = add_option observe, :destination, options
+
+    for_observation = {:observe => [observe]}
+    @_manager.relay_data for_observation
+  end
+
   def provide_truth what, value, ttl = 0, global = false, options = {}
     truth = {
       :what => what,
@@ -94,8 +105,15 @@ class TacticHelper
 
   def recycle_tactic
     # Reset to original state
-    set_initial_state
+    @_data = {}
+    set_pending_tactic_state
     
+    # Reset the data versions of the user provided execution blocks, so that we
+    # do get execution happening, even for "old" data.
+    @_todos.each do |todo|
+      todo[:req_versions] = {}
+    end
+
     # Tell the tactics engine that we are ready to be used again
     msg = {:recycle=> true}
     @_manager.relay_data msg
@@ -114,7 +132,7 @@ class TacticHelper
 
   def handle_input input
     deal_with_input input
-    execute_user_blocks
+    execute_user_blocks if @_ready_to_consider_processing_blocks
   end
 
   def manager= manager
@@ -124,9 +142,35 @@ class TacticHelper
   # ---------------------------------------
 
 private
-  def set_initial_state
-    @_data = {}
-    @_pending = [:destination, :port, :domain, :resource, :user]
+  def set_pending_tactic_state
+    @_pending = [
+      :destination, 
+      :port, 
+      :domain, 
+      :resource, 
+      :user,
+      :is_daemon,
+      :what,
+      :user,
+      :node_name
+    ]
+    @_ready_to_consider_processing_blocks = true
+    remove_existing_from_pending
+  end
+
+  def set_pending_daemon_state
+    @_pending = [
+      :is_daemon,
+      :node_name
+    ]
+    @_ready_to_consider_processing_blocks = true
+    remove_existing_from_pending
+  end
+
+  def remove_existing_from_pending
+    @_data.each_key do |key|
+      @_pending.delete(key.to_sym)
+    end
   end
 
   def execute_user_blocks
@@ -135,12 +179,39 @@ private
 
     @_todos.each do |todo|
       all_reqs_satisfied = true
+      should_execute_block = false
       todo[:requirements].each do |req|
         all_reqs_satisfied = false unless @_data[req]
       end
 
+      if all_reqs_satisfied then
+        # This is the first time we are executing the block.
+        # Initialize the version numbers of the requirements.
+        if todo[:req_versions].size == 0 then
+          versions = {}
+          todo[:requirements].each do |req|
+            versions[req] = @_data[req][:version]
+          end
+          todo[:req_versions] = versions
+          should_execute_block = true
+
+        else
+          # Check if any of the data items are a newer
+          # version than what the block has previously been
+          # executed with.
+          todo[:req_versions].each_pair do |req, version|
+            data_version = @_data[req][:version]
+            if data_version > version then
+              todo[:req_versions][req] = data_version
+              should_execute_block = true
+            end
+          end
+
+        end
+      end
+
       # Execute the user block
-      todo[:block].call(self, @_data) if all_reqs_satisfied
+      todo[:block].call(self, @_data) if should_execute_block
     end
 
   end
@@ -155,23 +226,63 @@ private
     if data['truths'] then
       received_truths = data['truths']
       received_truths.each do |truth|
-        what = truth['what']
-        value = truth['value']
-        source = truth['source']
+        what = truth["what"]
+        value = truth["value"]
+        source = truth["source"]
 
-        # We deal with the truths just as their resource names, rather than
-        # full resource@domain combos. Makes it easier to write tactics.
-        what =~ /([[:graph:]]*)@([[:graph:]]*)/
-        short_form = $1 || what
+        # If we are informed whether we are a daemon,
+        # then we can set up our pending variables
+        if what == "is_daemon" then
+          if value == true then
+            # We are a daemon
+            set_pending_daemon_state
+          else
+            # We are a tactic
+            set_pending_tactic_state
+          end
+        end
 
+        data_to_store = {
+          :what => what, 
+          :value => value, 
+          :source => source,
+          :version => 1
+        }
+
+        short_form = what
+
+        # Get the different parts from the data
+        begin
+          vars = TacticSolver::Helpers.magic_variables_from what
+          data_to_store[:domain] = vars[:domain]
+          data_to_store[:destination] = vars[:destination]
+          data_to_store[:port] = vars[:port]
+
+          # We deal with the truths just as their resource names, rather than
+          # full resource@domain combos. Makes it easier to write tactics.
+          short_form = vars[:resource]
+
+        rescue TacticSolver::ResourceTypeException
+          # Not a proper resource... ignore it
+        end
+        
         log "Received #{short_form} -> #{value}"
+
         @_pending.delete(short_form.to_sym)
 
-        @_data[short_form.to_sym] = {:what => what, :value => value, :source => source}
-        @_data[short_form.to_s] = {:what => what, :value => value, :source => source}
+        # If this is a value that has been updated, then make sure we update
+        # the version number
+        prev_data = @_data[short_form]
+        # We have previous data. Increase the version number of the new data we
+        # are inserting to replace the previous version.
+        data_to_store[:version] = prev_data[:version] + 1 if prev_data
 
+        # This is a little nasty... we store tons of dupes, unless they all
+        # reference the same object of course...
+        @_data[short_form.to_sym] = data_to_store
+        @_data[short_form.to_s] = data_to_store
+        @_data[what.to_s] = data_to_store
       end
     end
-
   end
 end
