@@ -30,10 +30,6 @@ context = ZMQ::Context.new(1)
 
 
 class NameResolver
-
-		def initialize 
-  end
-
   def call(env)
     request = Rack::Request.new(env)
     puts env.inspect
