@@ -1,5 +1,6 @@
-require 'thin'
 require 'rubygems'
+require 'bundler/setup' # To ensure the version installed by bundler is used
+require 'thin'
 require 'scanf'
 require 'timeout'
 require 'zmq'
