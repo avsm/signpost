@@ -229,6 +229,7 @@ private
         what = truth["what"]
         value = truth["value"]
         source = truth["source"]
+        user = truth["user"]
 
         # If we are informed whether we are a daemon,
         # then we can set up our pending variables
@@ -246,6 +247,7 @@ private
           :what => what, 
           :value => value, 
           :source => source,
+          :user => user,
           :version => 1
         }
 

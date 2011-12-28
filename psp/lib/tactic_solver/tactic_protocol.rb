@@ -10,7 +10,7 @@ module TacticProtocol
     scratch :needed_truth_scratch, [:what, :provider, :user_info] => [:truth]
     scratch :need_truth_scratch, [:what, :who] => [:user_info, :who_name]
     scratch :observe_truth_scratch, [:what, :who] => [:user_info, :who_name]
-    scratch :provide_truth_scratch, [:what, :provider, :user_info] => [:truth]
+    scratch :provide_truth_scratch, [:what, :provider, :user_info] => [:truth, :ttl]
     scratch :remove_subscriptions_scratch, [:who]
   end
 end

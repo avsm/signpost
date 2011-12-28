@@ -244,8 +244,11 @@ The following is a example of it's use:
       # request more truths
       helper.need_truth "my_truth", {:domain => "l"}
 
+      # can observe truths
+      helper.observe_truth "observed_truth", {:domain => "l"}
+
       # provide a new truth for the service provided by the tactic
-      helper.provide_truth TRUTH_NAME, VALUE, TTL
+      helper.provide_truth TRUTH_NAME, VALUE, TTL, GLOBAL
     end
 
     # This block becomes executable when the truth requested above
@@ -254,6 +257,15 @@ The following is a example of it's use:
       # access the truth as t[:my_truth][:value]
 
       # tell the tactic solver that the tactic is ready to be reused.
+      helper.recycle_tactic
+    end
+
+    # This block is executed whenever my_truth and observed_truth have changed
+    # since the last time the block was invoked.
+    helper.when :my_truth, :observed_truth do |h,t|
+      # Do something
+      # ...
+
       helper.recycle_tactic
     end
 

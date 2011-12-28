@@ -8,7 +8,7 @@ module TacticSolver
       # We know WHAT sort of truth they are
       # We know WHO the truth was made for
       # and we know the TRUTH itself
-      table :truths, [:what, :provider, :user_info] => [:truth]
+      table :truths, [:what, :provider, :user_info] => [:truth, :ttl_state]
 
       # These are the truths that are subscribed to
       # We know WHAT truth is needed
@@ -22,6 +22,21 @@ module TacticSolver
 
       # For adapting truths to serve to anyone
       scratch :adapted_provided_truths, [:what, :original_what, :provider, :user_info] => [:truth]
+
+      # Temp for adding ttl state to new truths. Ideally this would only be
+      # a in block temp collection, but the temp collections do not support
+      # schemas.
+      scratch :storable_truths, [:what, :provider, :user_info] => [:truth, :ttl_state]
+
+      # Garbage collection timer
+      periodic :garbage_collection_timer, 10
+    end
+
+    # Remove truths that are no longer valid
+    bloom :garbage_collection do
+      truths <- (garbage_collection_timer*truths).pairs do |g,t|
+        t unless ttl_is_valid? t
+      end
     end
 
     # Unsubscribe tactics that terminate
@@ -46,8 +61,12 @@ module TacticSolver
       # Let's see if we can satisfy the truths directly from our truth cache
       satisfiable_truth_needs <= (truths*need_truth_scratch).
           pairs(:what => :what) {|t, nt| 
-        if (t.user_info == "GLOBAL" or t.user_info == nt.user_info) then
-          [nt.who, t.what, nt.user_info, t]
+        if ((t.user_info == "GLOBAL" or t.user_info == nt.user_info) and
+              ttl_is_valid? t) then
+          # Create a truth without the TTL state
+          truth = [t.what, t.provider, t.user_info, t.truth]
+          # Pass the truth back to the user
+          [nt.who, t.what, nt.user_info, truth]
         end
       }
       needed_truth <~ satisfiable_truth_needs {|stn| [stn.who, stn.truth]}
@@ -62,10 +81,27 @@ module TacticSolver
       end
       
       provide_truth_scratch <= provide_truth.payloads
-      truths <= provide_truth_scratch
+      # We received a new truth. Now we need to create
+      # a ttl_state session for this truth so we can convert
+      # it into a truth ready for the truth table.
+      storable_truths <= provide_truth_scratch do |t|
+        ttl = t.ttl
+        ttl_state = create_ttl_state ttl
+        # FIXME: Is there a way to update a bud collection,
+        # rather than recreate it? This is really brittle if
+        # the bud table format changes! Instead try to just update
+        # the ttl section! In that case the ttl_state column
+        # in the truth table should also be called ttl, rather
+        # than ttl_state.
+        [t.what, t.provider, t.user_info, t.truth, ttl_state] if ttl > 0
+      end
+      truths <= storable_truths
+
       needed_truth <~ (provide_truth_scratch*truth_subscribers).
           pairs(:what => :what) do |p,t|
-        [t.who, p] if (p.user_info == "GLOBAL" or p.user_info == t.user_info)
+        if (p.user_info == "GLOBAL" or p.user_info == t.user_info) then
+          [t.who, [p.what, p.provider, p.user_info, p.truth]]
+        end
       end
 
       # If a daemon is subscribing to resource from ANY domain
@@ -87,8 +123,10 @@ module TacticSolver
     bootstrap do
       truths <= [
         ["web_auth_url@node_name", 
-         "global_truth", "GLOBAL", 
-         "http://localhost:8080/requests"]
+         "global_truth",
+         "GLOBAL", 
+         "http://localhost:8080/requests",
+         create_ttl_state(1_000_000)]
       ]
     end
 
@@ -123,6 +161,24 @@ module TacticSolver
 
     def tactics
       @_thread_pool.tactics
+    end
+
+  private
+    def ttl_is_valid? truth
+      return false if truth.ttl_state == :non_cacheable
+      ttl_state = truth.ttl_state
+      ttl_state[:expires] > Time.now.to_i
+    end
+
+    def create_ttl_state ttl
+      if ttl == 0 then
+        :non_cacheable
+      else
+        {
+          :ttl => ttl,
+          :expires => Time.now.to_i + ttl
+        }
+      end
     end
   end
 end
