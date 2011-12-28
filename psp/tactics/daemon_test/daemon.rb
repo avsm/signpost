@@ -10,7 +10,7 @@ tactic = TacticHelper.new
 tactic.when do |helper, truths|
   # This is the initial method...
   # Provide some daemon lemon pie
-  helper.provide_truth "daemon@pie", "tastes less good", 0, true
+  helper.provide_truth "daemon@pie", "tastes less good", 15, true
 
   # We also want to observe changes in IP for domain
   helper.observe_truth "ip_for_domain"

@@ -370,7 +370,7 @@ module TacticSolver
         new_truths = data["provide_truths"]
         new_truths.each {|truth| 
           user_info = truth["global"] == true ? "GLOBAL" : @_user_info
-          add_truth deal_with_magic(truth["what"]), truth["value"], user_info
+          add_truth deal_with_magic(truth["what"]), truth["value"], user_info, truth["ttl"]
         }
       end
 
@@ -467,9 +467,9 @@ module TacticSolver
       res
     end
 
-    def add_truth truth, value, user_info
+    def add_truth truth, value, user_info, ttl
       self.sync_do {
-        self.provide_truth <~ [[@_solver, [truth, @_name, user_info, value]]]
+        self.provide_truth <~ [[@_solver, [truth, @_name, user_info, value, ttl]]]
       }
     end
 
