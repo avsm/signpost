@@ -2,7 +2,7 @@ require 'rubygems'
 require 'bundler/setup'
 require 'rubydns'
 require 'timeout'
-require 'zmq'
+require 'socket'
 
 gem "json"
 begin
@@ -24,12 +24,6 @@ port = 5300
 # Don't buffer output (for debug purposes)
 $stderr.sync = true
 
-context = ZMQ::Context.new(1)
-@@tactic_solver = context.socket(ZMQ::REQ)
-@@tactic_solver.connect("ipc://tactic_solver:5000")
-
-dns_server = nil
-
 # Start the RubyDNS server
 dns_server = RubyDNS::run_server(:listen => [[:udp, ip, port]]) do
 
@@ -44,8 +38,12 @@ dns_server = RubyDNS::run_server(:listen => [[:udp, ip, port]]) do
       :user_info => @@user_info
     }
 
-    @@tactic_solver.send(request.to_json)
-    reply = JSON.parse(@@tactic_solver.recv)
+    solver_ip = '127.0.0.1'
+    port = 5000
+    s = TCPSocket.open(solver_ip, port)
+    s.puts "#{request.to_json}"
+    reply = JSON.parse(s.gets)
+    s.close
 
     if reply["status"] == "OK" then
       ips = reply["ips"]
@@ -60,4 +58,3 @@ end
 # Let the tactic solver know that it should terminate
 @@tactic_solver.send({:terminate => true}.to_json)
 @@tactic_solver.close
-context.close

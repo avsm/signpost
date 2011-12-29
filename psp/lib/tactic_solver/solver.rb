@@ -95,7 +95,7 @@ module TacticSolver
         # than ttl_state.
         [t.what, t.provider, t.user_info, t.truth, ttl_state] if ttl > 0
       end
-      truths <= storable_truths
+      truths <+- storable_truths
 
       needed_truth <~ (provide_truth_scratch*truth_subscribers).
           pairs(:what => :what) do |p,t|

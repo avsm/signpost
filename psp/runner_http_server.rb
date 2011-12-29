@@ -5,7 +5,6 @@ require 'bundler/setup' # To ensure the version installed by bundler is used
 require 'thin'
 require 'scanf'
 require 'timeout'
-require 'zmq'
 require 'http_server/psp_backend'
 
 gem "json"
@@ -26,10 +25,8 @@ end
 # Don't buffer output (for debug purposes)
 $stderr.sync = true
 
-context = ZMQ::Context.new(1)
-@@tactic_solver = context.socket(ZMQ::REQ)
-@@tactic_solver.connect("ipc://tactic_solver:5000")
-
+@@solver_ip = '127.0.0.1'
+@@port = 5000
 
 class NameResolver
   def call(env)
@@ -41,9 +38,12 @@ class NameResolver
       :what => "ip_for_domain@#{name[1]}",
       :user_info => @@user_info
     }
+    s = TCPSocket.open(@@solver_ip, @@port)
+    s.puts "#{request.to_json}"
+    reply = s.gets
+    s.close
 
-    @@tactic_solver.send(request.to_json)
-    body = [(@@tactic_solver.recv)]
+    body = [(reply)]
     [
       200,
       { 'Content-Type' => 'application/json' },
@@ -62,10 +62,4 @@ end
 #   end
 # end
 
-
 Thin::Server.start('0.0.0.0', 8080, NameResolver.new, :backend => Thin::Backends::PspServer)
-
-# Let the tactic solver know that it should terminate
-@@tactic_solver.send({:terminate => true}.to_json)
-@@tactic_solver.close
-context.close

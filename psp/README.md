@@ -17,11 +17,6 @@ Also append the following to you `~/.bashrc`:
 
 ## Dependencies
 
-Install [ZeroMQ](http://zeromq.org) first.  [Homebrew](http://mxcl.github.com/homebrew/) on
-the Mac lets you do this by:
-
-    brew install zeromq
-
 Please use bundler to install the dependencies:
 
     gem install bundler
