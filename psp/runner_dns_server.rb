@@ -54,7 +54,3 @@ dns_server = RubyDNS::run_server(:listen => [[:udp, ip, port]]) do
 
   end
 end
-
-# Let the tactic solver know that it should terminate
-@@tactic_solver.send({:terminate => true}.to_json)
-@@tactic_solver.close
