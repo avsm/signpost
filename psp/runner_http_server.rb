@@ -1,10 +1,12 @@
+#!/usr/bin/env ruby
+
 require 'rubygems'
 require 'bundler/setup' # To ensure the version installed by bundler is used
 require 'thin'
 require 'scanf'
 require 'timeout'
 require 'zmq'
-
+require 'http_server/psp_backend'
 
 gem "json"
 
@@ -50,16 +52,18 @@ class NameResolver
   end
 end
 
-Thin::Server.start('0.0.0.0', 8080) do
-  use Rack::CommonLogger
-  map '/address/' do
-    run NameResolver.new()
-  end
-  map '/files' do
-    run Rack::File.new('.')
-  end
-end
+# Thin::Server.start('0.0.0.0', 8080) do
+#   use Rack::CommonLogger
+#  map '/address/' do
+#     run NameResolver.new()
+#   end
+#   map '/files' do
+#     run Rack::File.new('.')
+#   end
+# end
 
+
+Thin::Server.start('0.0.0.0', 8080, NameResolver.new, :backend => Thin::Backends::PspServer)
 
 # Let the tactic solver know that it should terminate
 @@tactic_solver.send({:terminate => true}.to_json)
