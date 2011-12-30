@@ -8,12 +8,17 @@ module Thin
   # This class is instanciated by EventMachine on each new connection
   # that is opened.
   class PspConnection < Thin::Connection
-
     # verify the ssl credentials. 
     def ssl_verify_peer(cert)
       certificate = OpenSSL::X509::Certificate.new cert
       user = certificate.subject.to_a.select{|v| (v[0] == "CN")}
-      puts "request certificate for " + user[0][1]
+      user_info = user.first[1]
+
+      # Pass the user_info along to the application server
+      # This is of course assuming the authentication has passed.
+      @request.env["user_info"] = user_info
+
+      puts "request certificate for " + user_info
       puts "Success always when credentials are provided\n"
       return true
     end

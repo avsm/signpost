@@ -1,4 +1,5 @@
 require 'http_server/psp_connection'
+require 'pp'
 
 module Thin
   module Backends
@@ -16,7 +17,7 @@ module Thin
 
       # Connect the server
       def connect
-        puts "psp connect method collaed\n"
+        puts "psp connect method called\n"
         @signature = EventMachine.start_server(@host, @port, PspConnection, &method(:initialize_connection))
       end
 
