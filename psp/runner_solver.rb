@@ -22,6 +22,7 @@ $stderr.sync = true
 class SolvingServer < EventMachine::Connection
   def initialize ip_port
     @ip_port = ip_port
+    @received_results = false
     super
   end
 
@@ -35,16 +36,27 @@ class SolvingServer < EventMachine::Connection
       options = {:what => what, :solver => @ip_port, :user_info => user_info}
 
       TacticSolver::Question.new options do |truths|
-        ips = []
+        @received_results = true
+        results = []
         truths.to_a.each do |truth|
           truth_name, who, user_info, answer = truth
-          answer.class == Array ? answer.each {|a| ips << a} : ips << answer
+          answer.class == Array ? answer.each {|a| results << a} : results << answer
         end
         reply = {
           :status => "OK",
-          :ips => ips
+          :result => results,
+          :what => what,
+          :user_info => user_info
         }
         send_data "#{reply.to_json}\n"
+      end
+
+      EM.add_timer(30) do
+        reply = {
+          :status => "FAILED",
+          :message => "Timeout"
+        }
+        send_data "#{reply.to_json}\n" unless @received_results
       end
 
       close_connection if work["terminate"]

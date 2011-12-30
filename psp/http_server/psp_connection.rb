@@ -3,7 +3,7 @@ require 'thin/connection'
 #  curl --cert ssl-keys/laptop.crt --key ssl-keys/laptop.key.insecure -k
 #  https://localhost:8080/ -v 
 
-module Thin
+module Signpost
   # Connection between the server and client.
   # This class is instanciated by EventMachine on each new connection
   # that is opened.

@@ -1,10 +1,10 @@
 require 'http_server/psp_connection'
 require 'pp'
 
-module Thin
+module Signpost
   module Backends
     # Backend to act as a TCP socket server.
-    class PspServer < Base
+    class PspServer < Thin::Backends::Base
       # Address and port on which the server is listening for connections.
       attr_accessor :host, :port
 
