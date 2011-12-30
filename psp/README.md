@@ -1,5 +1,20 @@
 # Personal signpost
 
+### Requirements
+
+You'll need to have the following installed and the rest of this Readme will guide you through.
+
+- GCC (via Xcode if you're on a Mac)
+- Ruby 1.8.x
+- Other dependencies (via bundler)
+
+## GCC
+
+Required for the compilation step during the Ruby install. Xcode is the easiest way to install 
+this on a Mac. You can download Xcode 3.2.6 from Apple's dev site.
+
+	http://developer.apple.com/xcode/index.php
+
 ## Ruby Install
 
 Ruby 1.8.x is required.  Suggestion is to install [RVM](http://beginrescueend.com/)
@@ -11,7 +26,11 @@ and use that to manage Rubies and Gems.  For example,
     $ rvm --default 1.8.7
     $ gem update --system
 
-Also append the following to you `~/.bashrc`:
+If the *aenv* command doesn't work for you, don't worry. Just add `~/.rvm/bin` to your PATH manually 
+(see below). Also append the following to your `~/.bashrc` or `~/.bash_profile` (replacing '$HOME' 
+with the path to your home directory):
+
+	PATH="${PATH}:~/.rvm/bin"
 
     [ -s "$HOME/.rvm/scripts/rvm" ] && source "$HOME/.rvm/scripts/rvm" # Load RVM function
 
