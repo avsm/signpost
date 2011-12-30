@@ -4,8 +4,6 @@ require 'rubygems'
 require 'bundler/setup' # To ensure the version installed by bundler is used
 require 'sinatra'
 require 'thin'
-require 'scanf'
-require 'timeout'
 require 'http_server/psp_backend'
 
 gem "json"
