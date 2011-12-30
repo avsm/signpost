@@ -16,8 +16,8 @@ To test the tactic solver use the runner_tactic_solver.rb file:
 ## More
 
 For more information on how the tactic solver works, and how to write tactics
-for it, please see: [how the tactic solver works](https://github.com/avsm/signpost/blob/master/psp/lib/docs/tactic_solver.md) and
-[how to write tactics](https://github.com/avsm/signpost/blob/master/psp/lib/docs/writing_tactics.md).
+for it, please see: [how the tactic solver works](https://github.com/avsm/signpost/blob/master/psp/docs/tactic_solver.md) and
+[how to write tactics](https://github.com/avsm/signpost/blob/master/psp/docs/writing_tactics.md).
 
 
 # Routing info
