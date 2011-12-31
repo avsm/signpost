@@ -115,7 +115,8 @@ module TacticSolver
 
     def terminated
       puts "The tactic script #{@_name} terminated."
-      # TODO: Inform the thread pool (owner) of the death
+      # Remove the socket to be a nice and clean citizen.
+      File.delete(socket_name)
     end
 
     # Accessor methods
