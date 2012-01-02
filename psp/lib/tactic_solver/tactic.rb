@@ -337,14 +337,14 @@ module TacticSolver
 
     def send_initial_data
       # Pass standard facts to the tactic
-      pass_on_truths [["is_daemon", "initial_value", @_user_info, false],
-                      ["what", "initial_value", @_user_info, @_what],
-                      ["port", "initial_value", @_user_info, @_port],
-                      ["destination", "initial_value", @_user_info, @_destination],
-                      ["domain", "initial_value", @_user_info, @_domain],
-                      ["resource", "initial_value", @_user_info, @_resource],
-                      ["user", "initial_value", @_user_info, @_user_info],
-                      ["node_name", "initial_value", @_user_info, @_node_name]]
+      pass_on_truths [["is_daemon", "initial_value", @_user_info, @_node_name, false],
+                      ["what", "initial_value", @_user_info, @_node_name, @_what],
+                      ["port", "initial_value", @_user_info, @_node_name, @_port],
+                      ["destination", "initial_value", @_user_info, @_node_name, @_destination],
+                      ["domain", "initial_value", @_user_info, @_node_name, @_domain],
+                      ["resource", "initial_value", @_user_info, @_node_name, @_resource],
+                      ["user", "initial_value", @_user_info, @_node_name, @_user_info],
+                      ["node_name", "initial_value", @_user_info, @_node_name, @_node_name]]
     end
 
     # ---------------------------------------------------------
@@ -355,8 +355,8 @@ module TacticSolver
       @_name = @_tactic_thread.name
       
       # Pass standard facts to the tactic
-      pass_on_truths [["is_daemon", "initial_value", "DAEMON", true],
-                      ["node_name", "initial_value", "DAEMON", @_node_name]]
+      pass_on_truths [["is_daemon", "initial_value", "DAEMON", @_node_name, true],
+                      ["node_name", "initial_value", "DAEMON", @_node_name, @_node_name]]
     end
 
     # ---------------------------------------------------------
@@ -470,18 +470,19 @@ module TacticSolver
 
     def add_truth truth, value, user_info, ttl
       self.sync_do {
-        self.provide_truth <~ [[@_solver, [truth, @_name, user_info, value, ttl]]]
+        self.provide_truth <~ [[@_solver, [truth, @_name, user_info, @_node_name, value, ttl]]]
       }
     end
 
     def pass_on_truths truth_vals
       truths = []
-      truth_vals.each do |truth, source, user_info, value|
+      truth_vals.each do |truth, source, user_info, signpost, value|
         new_truth = {
           :what => truth,
           :source => source,
           :value => value,
-          :user => user_info
+          :user => user_info,
+          :signpost => signpost
         }
         truths << new_truth
       end

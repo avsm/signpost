@@ -230,6 +230,7 @@ private
         value = truth["value"]
         source = truth["source"]
         user = truth["user"]
+        signpost = truth["signpost"]
 
         # If we are informed whether we are a daemon,
         # then we can set up our pending variables
@@ -248,7 +249,8 @@ private
           :value => value, 
           :source => source,
           :user => user,
-          :version => 1
+          :version => 1,
+          :signpost => signpost
         }
 
         short_form = what

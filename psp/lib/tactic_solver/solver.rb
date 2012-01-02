@@ -8,7 +8,7 @@ module TacticSolver
       # We know WHAT sort of truth they are
       # We know WHO the truth was made for
       # and we know the TRUTH itself
-      table :truths, [:what, :provider, :user_info] => [:truth, :ttl_state]
+      table :truths, [:what, :provider, :user_info, :signpost] => [:truth, :ttl_state]
 
       # These are the truths that are subscribed to
       # We know WHAT truth is needed
@@ -21,15 +21,22 @@ module TacticSolver
       scratch :satisfiable_truth_needs, [:who, :what, :user_info] => [:truth]
 
       # For adapting truths to serve to anyone
-      scratch :adapted_provided_truths, [:what, :original_what, :provider, :user_info] => [:truth]
+      scratch :adapted_provided_truths, [:what, :original_what, :provider, :user_info, :signpost] => [:truth]
 
       # Temp for adding ttl state to new truths. Ideally this would only be
       # a in block temp collection, but the temp collections do not support
       # schemas.
-      scratch :storable_truths, [:what, :provider, :user_info] => [:truth, :ttl_state]
+      scratch :storable_truths, [:what, :provider, :user_info, :signpost] => [:truth, :ttl_state]
 
       # Garbage collection timer
       periodic :garbage_collection_timer, 10
+
+      # truth to be redistributed
+      scratch :redistributable_truths, [:what, :provider, :user_info, :signpost] => [:truth, :ttl]
+
+      # FIXME: Find better way to deliver this truth, than through a channel...
+      # :(
+      channel :provide_truth_from_external
     end
 
     # Remove truths that are no longer valid
@@ -64,7 +71,7 @@ module TacticSolver
         if ((t.user_info == "GLOBAL" or t.user_info == nt.user_info) and
               ttl_is_valid? t) then
           # Create a truth without the TTL state
-          truth = [t.what, t.provider, t.user_info, t.truth]
+          truth = [t.what, t.provider, t.user_info, t.signpost, t.truth]
           # Pass the truth back to the user
           [nt.who, t.what, nt.user_info, truth]
         end
@@ -72,7 +79,7 @@ module TacticSolver
       needed_truth <~ satisfiable_truth_needs {|stn| [stn.who, stn.truth]}
 
       # Find needs that we cannot satisfy, and register them
-      temp :dev_null <= need_truth_scratch do |nt|
+      temp :dev_null_1 <= need_truth_scratch do |nt|
         unless satisfiable_truth_needs.exists? {|s|
           s.what == nt.what and (s.user_info == nt.user_info or s.user_info == "GLOBAL")
         } then
@@ -80,6 +87,13 @@ module TacticSolver
         end
       end
       
+      # Distribute truths to the network
+      redistributable_truths <= provide_truth.payloads
+      temp :dev_null_2 <= redistributable_truths do |t|
+        @communication_center.distribute_truths [t.what, t.provider, t.user_info, t.signpost, t.truth, t.ttl]
+      end
+
+      provide_truth_scratch <= provide_truth_from_external.payloads
       provide_truth_scratch <= provide_truth.payloads
       # We received a new truth. Now we need to create
       # a ttl_state session for this truth so we can convert
@@ -87,20 +101,14 @@ module TacticSolver
       storable_truths <= provide_truth_scratch do |t|
         ttl = t.ttl
         ttl_state = create_ttl_state ttl
-        # FIXME: Is there a way to update a bud collection,
-        # rather than recreate it? This is really brittle if
-        # the bud table format changes! Instead try to just update
-        # the ttl section! In that case the ttl_state column
-        # in the truth table should also be called ttl, rather
-        # than ttl_state.
-        [t.what, t.provider, t.user_info, t.truth, ttl_state] if ttl > 0
+        [t.what, t.provider, t.user_info, t.signpost, t.truth, ttl_state] if ttl > 0
       end
       truths <+- storable_truths
 
       needed_truth <~ (provide_truth_scratch*truth_subscribers).
           pairs(:what => :what) do |p,t|
         if (p.user_info == "GLOBAL" or p.user_info == t.user_info) then
-          [t.who, [p.what, p.provider, p.user_info, p.truth]]
+          [t.who, [p.what, p.provider, p.user_info, p.signpost, p.truth]]
         end
       end
 
@@ -112,11 +120,11 @@ module TacticSolver
         # Get the resource part of the what
         t.what =~ /([[:graph:]]*)@.*/
         alternative_what = "#{$1}@ANY"
-        [alternative_what, t.what, t.provider, t.user_info, t.truth]
+        [alternative_what, t.what, t.provider, t.user_info, t.signpost, t.truth]
       end
       needed_truth <~ (adapted_provided_truths*truth_subscribers).
           pairs(:what => :what) do |p,t|
-        [t.who, [p.original_what, p.provider, p.user_info, p.truth]]
+        [t.who, [p.original_what, p.provider, p.user_info, p.signpost, p.truth]]
       end
     end
 
@@ -125,6 +133,7 @@ module TacticSolver
         ["web_auth_url@node_name", 
          "global_truth",
          "GLOBAL", 
+         @name,
          "http://localhost:8080/requests",
          create_ttl_state(1_000_000)]
       ]
@@ -132,12 +141,19 @@ module TacticSolver
 
     def initialize node_name = "default", options = {}
       @name = node_name
-      
+
       super options
       self.run_bg
-
+      
       # Pool for tactics
       @_thread_pool = TacticPool.new @name, ip_port
+
+      # For communication with other signposts
+      @communication_center = CommunicationCentre.new self, "sebastian.kle.io"
+    end
+
+    def add_external_truth truth
+      sync_do {provide_truth_from_external <~ [[ip_port, truth]]}
     end
 
     def resolve what, user_info

@@ -18,6 +18,7 @@ $:.unshift File.dirname(__FILE__)
 require 'tactic_solver/tactic_protocol'
 require 'tactic_solver/tactic_helpers'
 require 'tactic_solver/tactic_pool'
+require 'tactic_solver/comms_agent'
 require 'tactic_solver/tactic'
 require 'tactic_solver/question'
 require 'tactic_solver/solver'
