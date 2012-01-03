@@ -8,8 +8,8 @@ module TacticProtocol
 
     # Format of data on the wire
     scratch :needed_truth_scratch, [:what, :provider, :user_info, :signpost] => [:truth]
-    scratch :need_truth_scratch, [:what, :who] => [:user_info, :who_name]
-    scratch :observe_truth_scratch, [:what, :who] => [:user_info, :who_name]
+    scratch :need_truth_scratch, [:what, :who, :signpost] => [:user_info, :who_name]
+    scratch :observe_truth_scratch, [:what, :who, :signpost] => [:user_info, :who_name]
     scratch :provide_truth_scratch, [:what, :provider, :user_info, :signpost] => [:truth, :ttl]
     scratch :remove_subscriptions_scratch, [:who]
   end

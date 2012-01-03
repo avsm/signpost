@@ -126,11 +126,10 @@ module TacticSolver
     end
 
     def receive channel, data
-      # puts "Received from #{channel.name}:"
-      # pp data
       perform_action_for_remote_signpost channel, data["action"] if data["action"]
       connect_to_signposts data["signposts"] if data["signposts"]
       handle_new_truths data["truths"] if data["truths"]
+      resolve data["resolve"] if data["resolve"]
     end
 
     def distribute_truths truths
@@ -148,6 +147,23 @@ module TacticSolver
       @_listen_port
     end
 
+    def remote_resolve what, user_info, signpost
+      # Get the channel for the signpost where the truth should be resolved
+      channel = (@_channels.select do |s|
+        s.name == signpost
+      end).first
+      # Resolve the truth request by sending it to the signpost that
+      # should resolve it.
+      if channel then
+        data = {"resolve" => {"what" => what, "user_info" => user_info}}
+        channel.send data
+        []
+      else
+        puts "ERROR: Trying to resolve '#{what}' for #{user_info} on node #{signpost} that doesn't exist"
+      end
+
+    end
+
   private
     def perform_action_for_remote_signpost channel, action
       case action
@@ -162,8 +178,10 @@ module TacticSolver
         # return all the truths we currently hold
         # to the other channel.
         truths = @_solver.exportable_truths
-        data = {"truths" => truths}
-        channel.send data
+        unless truths.size == 0 then
+          data = {"truths" => truths}
+          channel.send data
+        end
 
       end
     end
@@ -180,6 +198,18 @@ module TacticSolver
 
     def handle_new_truths truths
       truths.each {|truth| @_solver.add_external_truth truth}
+    end
+
+    def resolve query
+      what = query["what"]
+      user_info = query["user_info"]
+      options = {:what => what, :solver => @_solver.ip_port, :user_info => user_info}
+
+      Question.new options do |truths|
+        # We don't really need to deal with the result.
+        # It will automatically be sent to the other signposts
+        # where it will be given to the tactic that needs it.
+      end
     end
 
     def setup_comms_server

@@ -77,6 +77,7 @@ class TacticHelper
     need = add_option need, :domain, options
     need = add_option need, :port, options
     need = add_option need, :destination, options
+    need = add_option need, :signpost, options
 
     needs = {:need_truths => [need]}
     @_manager.relay_data needs
@@ -87,6 +88,7 @@ class TacticHelper
     observe = add_option observe, :domain, options
     observe = add_option observe, :port, options
     observe = add_option observe, :destination, options
+    observe = add_option observe, :signpost, options
 
     for_observation = {:observe => [observe]}
     @_manager.relay_data for_observation

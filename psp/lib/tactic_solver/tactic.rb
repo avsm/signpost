@@ -330,7 +330,7 @@ module TacticSolver
       # Find what the tactic requires
       needed_parameters = requirements @_tactic_thread.requires
       # Add requirements
-      needed_parameters.each {|p| add_requirement p}
+      needed_parameters.each {|p| add_requirement p, "ANY"}
 
       send_initial_data
     end
@@ -378,13 +378,13 @@ module TacticSolver
       # Requesting more truth data
       if data["need_truths"] then
         needs = data["need_truths"]
-        needs.each {|nd| add_requirement need_from nd}
+        needs.each {|nd| add_requirement *(need_from nd)}
       end
 
       # Become a truth observer
       if data["observe"] then
         observes = data["observe"]
-        observes.each {|t| add_observer observation_from t}
+        observes.each {|t| add_observer *(observation_from t)}
       end
 
       # Log messages
@@ -465,7 +465,9 @@ module TacticSolver
       else
         "#{what}@#{@_destination}"
       end
-      res
+
+      signpost = data["signpost"] ? data["signpost"] : "ANY"
+      [res, signpost]
     end
 
     def add_truth truth, value, user_info, ttl
@@ -494,12 +496,12 @@ module TacticSolver
       pass_on_truths [data]
     end
 
-    def add_observer requirement
-      self.sync_do {self.observe_truth <~ [[@_solver, [requirement, ip_port, @_user_info, @_name]]]}
+    def add_observer requirement, signpost
+      self.sync_do {self.observe_truth <~ [[@_solver, [requirement, ip_port, signpost, @_user_info, @_name]]]}
     end
 
-    def add_requirement requirement
-      self.sync_do {self.need_truth <~ [[@_solver, [requirement, ip_port, @_user_info, @_name]]]}
+    def add_requirement requirement, signpost
+      self.sync_do {self.need_truth <~ [[@_solver, [requirement, ip_port, signpost, @_user_info, @_name]]]}
     end
 
     def requirements requires

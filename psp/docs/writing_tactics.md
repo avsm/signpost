@@ -130,6 +130,9 @@ Requests for additional truths:
     {"need_truths": [
         {
           "resource":RESOURCE_NAME, # i.e. tcp_in
+          "signpost":SIGNPOST_NAME, # optional, if present causes the truth to
+          # be evaluted on that particular signpost within the signpost domain.
+
           # optional combination of:
           "domain": DOMAIN, # domain for which truth should hold
           "port": PORT, # used in combination with the domain, if provided
@@ -147,6 +150,9 @@ To become an observer, a tactic sends the following to the tactic solver:
     {"observe": [
         {
           "resource":RESOURCE_NAME, # i.e. tcp_in
+          "signpost":SIGNPOST_NAME, # optional, if present only returns truths
+          # evaluated on that particular signpost.
+
           # optional combination of:
           "domain": DOMAIN, # domain for which truth should hold
           "port": PORT, # used in combination with the domain, if provided

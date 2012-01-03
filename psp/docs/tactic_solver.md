@@ -14,7 +14,7 @@ Each truth has the following set of information associated with it:
 
 - The name of the truth (*resource*)
 - The domain the truth is about (*domain*)
-- The holder of the truth (which node believes the truth to hold) (currently not implemented) (*holder*)
+- The signpost that generated the truth (which signpost believes the truth to hold) (*holder*)
 - Information about the user requesting the truth (*user*)
 - The name of the tactic that provided the truth (*source*)
 - When the truth expires (*expires*)
@@ -39,7 +39,7 @@ as **ip_for_domain@www.kle.io** (*what*).
 Let us assume there is a tactic called DNS that provides this kind of truth. 
 The truths returned by DNS would have **DNS** as their source (*source*).
 
-Once the DNS-tactic has resolved the domain name into a DNS record, it returns the truth to the general pool of truths. The value of the truth (*value*) would be the IP-addresses of www.kle.io. The domain (*domain*) the truth is about would be www.kle.io. With the exception of services like content distribution networks, the result of a DNS requests do not depend on the user issueing the request. The information about the requesting user (*user*) would therefore be set to **ALL**, and the section about which node holds the truth (*holder*) would be set to **GLOBAL** to indicate that the truth holds on any signpost node. The truth would be set to expire (*expires*) with the same TTL as the DNS record.
+Once the DNS-tactic has resolved the domain name into a DNS record, it returns the truth to the general pool of truths. The value of the truth (*value*) would be the IP-addresses of www.kle.io. The domain (*domain*) the truth is about would be www.kle.io. With the exception of services like content distribution networks, the result of a DNS requests do not depend on the user issueing the request. The information about the requesting user (*user*) would therefore be set to **GLOBAL** to indicate that the user is insignificant. The truth would be set to expire (*expires*) with the same TTL as the DNS record.
 
 
 ## Checking if Alpha can connect to Beta on TCP port 5000

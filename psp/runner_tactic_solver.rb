@@ -19,10 +19,11 @@ module RunHelper
     puts <<-EOF
 TacticSolver help
 
-To exit type 'exit'
-
 exit
   Terminates the program
+
+(r|resolve) truth [signpost]
+  resolves a truth either locally, or on a remote signpost if provided 
 
 tactics 
   Lists all the tactics
@@ -36,30 +37,11 @@ user_info:
     
     user_info INFO
             
+subs
+  Returns a list of all current truth subscribers/observers
 
--------------------------
-
-Supported calls:
-
-  (r|resolve) truth
-
-or 'free text' entries like:
-
-I want (a|to) WHAT (in)to WHERE [through port PORT]
-
-Example:
-  
-  I want a connection to localhost
-  I want to ssh into test.probsteide.com through port 22
-  I want a connection to 127.0.0.1 through port 80
-
-Shortcuts:
-
-  c1: shortcut for "I want a connection to localhost"
-  c2: shortcut for "I want a connection to localhost through port 8080"
-  c3: shortcut for "I want to ssh to nf-test109.cl.cam.ac.uk through port 22"
-  c4: shortcut for "resolve tcp_in@localhost:8000"
-
+running?
+  Returns whether or not the EventMachine reactor is running
 
 EOF
   end
@@ -73,31 +55,16 @@ tactic_solver = TacticSolver::Solver.new resolver_name
 input = RunHelper.get_input
 while not(input =~ /exit/i)
   case input
-  when /I want (a|to) ([\w\d]*) (in)?to ([\w\d\.\-\_\:\@]*)( through port ([\d]*))?/
+  when /(r|resolve) ([[:graph:]]*)( ([[:graph:]]*))?\Z/
     what = $2
-    to = $4
-    port = $6
-    tactic_solver.resolve "#{what}@#{to}:#{port.to_i}", user_info
-
-  when /c1\Z/
-    tactic_solver.resolve "connection@#{resolver_name}", user_info
-
-  when /c2\Z/
-    tactic_solver.resolve "connection@#{resolver_name}:8080", user_info
-
-  when /c3\Z/
-    tactic_solver.resolve "ssh@nf-test109.cl.cam.ac.uk:22", user_info
-
-  when /c4\Z/
-    tactic_solver.resolve "tcp_in@#{resolver_name}:8000", user_info
-
-  when /c5\Z/
-    tactic_solver.resolve "tcp_out@#{resolver_name}:8000", user_info
-
-  when /(r|resolve) ([[:graph:]]*)\Z/
-    what = $2
-    puts "Should resolve #{what}"
-    tactic_solver.resolve what, user_info
+    signpost = $4
+    if signpost then
+      puts "Should resolve #{what} on #{signpost}"
+      tactic_solver.resolve what, user_info, signpost
+    else
+      puts "Should resolve #{what}"
+      tactic_solver.resolve what, user_info
+    end
 
   when /tactics\Z/
     pp tactic_solver.tactics.to_a
