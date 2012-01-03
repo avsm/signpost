@@ -115,6 +115,10 @@ module TacticSolver
       # Ask the channel for it's list of connections
       data = {"action" => "list_of_signposts"}
       channel.send data
+
+      # Ask the other signpost for its truths
+      data = {"action" => "gimme_truths"}
+      channel.send data
     end
 
     def channel_closed channel
@@ -153,6 +157,14 @@ module TacticSolver
           {"name" => c.name, "ip" => ip, "port" => port}}
         }
         channel.send data
+
+      when "gimme_truths"
+        # return all the truths we currently hold
+        # to the other channel.
+        truths = @_solver.exportable_truths
+        data = {"truths" => truths}
+        channel.send data
+
       end
     end
 
@@ -166,8 +178,8 @@ module TacticSolver
       end
     end
 
-    def handle_new_truths truth
-      @_solver.add_external_truth truth
+    def handle_new_truths truths
+      truths.each {|truth| @_solver.add_external_truth truth}
     end
 
     def setup_comms_server

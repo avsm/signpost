@@ -90,7 +90,7 @@ module TacticSolver
       # Distribute truths to the network
       redistributable_truths <= provide_truth.payloads
       temp :dev_null_2 <= redistributable_truths do |t|
-        @communication_center.distribute_truths [t.what, t.provider, t.user_info, t.signpost, t.truth, t.ttl]
+        @communication_center.distribute_truths [[t.what, t.provider, t.user_info, t.signpost, t.truth, t.ttl]]
       end
 
       provide_truth_scratch <= provide_truth_from_external.payloads
@@ -177,6 +177,22 @@ module TacticSolver
 
     def tactics
       @_thread_pool.tactics
+    end
+
+    # This method is called by the communication agent to
+    # find the truths that are ours that we hold.
+    # It also readies them for export.
+    def exportable_truths
+      # We only export truths that are from this signpost
+      exports = self.truths.to_a.select do |t|
+        t[3] == @name
+      end
+      # Turns TTL from a timestamp, back into a regular TTL
+      exports.map do |t|
+        ttl_state = t.pop
+        ttl = ttl_state[:expires] - Time.now.to_i
+        t.push ttl
+      end
     end
 
   private
