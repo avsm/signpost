@@ -57,7 +57,7 @@ module TacticSolver
     end
 
     def unbind
-      @_delegate.channel_closed
+      @_delegate.channel_closed self
     end
 
     def ip_port
@@ -127,7 +127,16 @@ module TacticSolver
     end
 
     def channel_closed channel
-      puts "TODO: Channel to #{channel.name} was terminated"
+      # Remove the channel from the channel array.
+      @_channels = @_channels.select do |ch|
+        ch.name != channel.name
+      end
+
+      # If we are not connected to any signposts anymore,
+      # then try to reconnect to the signpost from DNS! We don't want to be
+      # alone!
+      find_signpost_from_dns if @_channels.size == 0
+
       @_logger.log "signpost_connection_closed", channel.name
     end
 
@@ -203,6 +212,8 @@ module TacticSolver
     end
 
     def connect_to_signposts signposts
+      # TODO: If there are any signposts I haven't heard about yet, then
+      # I should distribute them to other signposts I know of, so we get a consistent view!
       signposts.each do |signpost|
         unless signpost["name"] == @_name then
           unless @_channels.index {|c| c.name == signpost["name"]} then
@@ -254,7 +265,6 @@ module TacticSolver
         # Use the first signpost we get, and try connecting to it
         if truths.size > 0 then
           domain, port = truths.first[4]
-          puts "Got domain: #{domain} and port: #{port} to connect to"
           connect_to_signpost domain, port
 
         else
