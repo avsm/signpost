@@ -15,6 +15,7 @@ require 'thread'
 
 $:.unshift File.dirname(__FILE__)
 
+require 'tactic_solver/config'
 require 'tactic_solver/tactic_protocol'
 require 'tactic_solver/tactic_helpers'
 require 'tactic_solver/logger'

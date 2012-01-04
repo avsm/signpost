@@ -94,12 +94,13 @@ module TacticSolver
   # All signposts are themselves responsible for distributing their own truths
   # to other signposts.
   class CommunicationCentre
-    def initialize solver, signpost_domain, logger
+    def initialize solver, config, logger
       @_solver = solver
-      @_domain = signpost_domain
+      @_domain = config.signpost_domain
       @_channels = []
-      @_name = "server"
-      @_listen_port = 8987
+      @_name = config.signpost_client
+      @_listen_port = config.port
+      @_listen_ip = config.ip
       @_logger = logger
 
       setup_comms_server
@@ -234,27 +235,11 @@ module TacticSolver
     end
 
     def setup_comms_server
-      port = 8987
-      orig_port = port
-      running = false
-      while !running do
-        begin
-          EventMachine::start_server("0.0.0.0", port, CommsChannelServer, self)
-          running = true
-          puts "Running with comms agent on port #{port}"
-        rescue
-          puts "Not possible on port #{port}"
-          port = port + 1
-        rescue
-        end
-      end
-      # TODO: remove
-      unless port == orig_port then
-        @_name = "client-#{port - orig_port}"
-        puts "Connecting to server"
-        ip = "127.0.0.1"
-        @_listen_port = port
-        connect_to_signpost ip, orig_port
+      begin
+        EventMachine::start_server(@_listen_ip, @_listen_port, CommsChannelServer, self)
+        puts "Running signpost #{@_name} listening on #{@_listen_ip}:#{@_listen_port}"
+      rescue e
+        raise "#{@_name} cannot listen on #{@_listen_ip}:#{@_listen_port}: #{e}"
       end
     end
 

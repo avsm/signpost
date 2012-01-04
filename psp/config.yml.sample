@@ -1,0 +1,20 @@
+# This is a sample configuration for a signpost.
+# Please set the fields to values that make sense
+# for your system and remove the .sample suffix.
+#
+# For Signpost devs: please do not check your config into the repo.
+
+# Naming the signpost node
+signpost_domain: kle.io
+signpost_client: lab.kle.io
+description: Signpost running on desktop machine in the lab
+
+# Setting up comms
+
+# This is the port the signpost listens to, in order
+# to let other signposts connect.
+port: 8987
+ip: 0.0.0.0
+
+# Logging
+log_file: "log/signpost.txt"

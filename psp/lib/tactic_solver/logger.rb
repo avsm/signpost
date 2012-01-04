@@ -49,14 +49,10 @@ module TacticSolver
   #     When a tactic requests to become an observer of a truth
   # 
   class Logger
-    def initialize log_file = "log/signpost.log", name = "AsOfYetUnknownNodeName"
-      @_log_file = log_file
-      @_name = name
+    def initialize config
+      @_log_file = config.log_file
+      @_name = config.signpost_client
       @_file = open_file @_log_file
-    end
-
-    def node_name= name
-      @_name = name
     end
 
     # Logs message to disk.

@@ -145,15 +145,16 @@ module TacticSolver
     end
 
     def initialize node_name = "default", options = {}
+      @_config = Config.new
+
       super options
       self.run_bg
 
-      @_logger = Logger.new
+      @_logger = Logger.new @_config
+      @_name = @_config.signpost_client
 
       # For communication with other signposts
-      @_communication_center = CommunicationCentre.new self, "sebastian.kle.io", @_logger
-      @_name = @_communication_center.name
-      @_logger.node_name = @_name
+      @_communication_center = CommunicationCentre.new self, @_config, @_logger
       
       add_initial_truths
 
