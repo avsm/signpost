@@ -128,12 +128,15 @@ module TacticSolver
         @_logger.log "request_remote_truths", channel.name
 
       else
+        puts "It's trying to connect to itself"
         channel.terminate_channel
 
       end
     end
 
     def channel_closed channel
+      return if channel.name == @_name
+
       # Remove the channel from the channel array.
       @_channels = @_channels.select do |ch|
         ch.name != channel.name
