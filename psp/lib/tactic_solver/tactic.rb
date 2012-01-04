@@ -238,7 +238,7 @@ module TacticSolver
 
     #---------------------------
     
-    def initialize tactic_thread, solver, node_name, user_info, options = {}
+    def initialize tactic_thread, solver, node_name, user_info, logger, options = {}
       # For tactics
       @_user_info = user_info
       @_what = options[:what] || nil
@@ -249,6 +249,7 @@ module TacticSolver
       @_solver = solver
       @_is_daemon = @_tactic_thread.is_daemon?
       @_perform_delayed_execution = @_is_daemon ? true : (@_what ? true : false)
+      @_logger = logger
 
       super options
       register_callbacks
@@ -471,6 +472,7 @@ module TacticSolver
     end
 
     def add_truth truth, value, user_info, ttl
+      @_logger.log "add_truth", @_name, truth, user_info, ttl
       self.sync_do {
         self.provide_truth <~ [[@_solver, [truth, @_name, user_info, @_node_name, value, ttl]]]
       }
@@ -487,6 +489,7 @@ module TacticSolver
           :signpost => signpost
         }
         truths << new_truth
+        @_logger.log "pass_truth_to_tactic", @_name, truth
       end
       data = {:truths => truths}
       @_tactic_thread.send_data data
@@ -497,10 +500,12 @@ module TacticSolver
     end
 
     def add_observer requirement, signpost
+      @_logger.log "add_observer", @_name, requirement
       self.sync_do {self.observe_truth <~ [[@_solver, [requirement, ip_port, signpost, @_user_info, @_name]]]}
     end
 
     def add_requirement requirement, signpost
+      @_logger.log "add_need", @_name, requirement
       self.sync_do {self.need_truth <~ [[@_solver, [requirement, ip_port, signpost, @_user_info, @_name]]]}
     end
 

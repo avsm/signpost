@@ -1,8 +1,9 @@
 module TacticSolver
   class TacticPool
-    def initialize node_name, ip_port
+    def initialize node_name, ip_port, logger
       @_node_name = node_name
       @_ip_port = ip_port
+      @_logger = logger
 
       # This is where tactics are stored
       @_tactic_pool = {}
@@ -43,7 +44,7 @@ module TacticSolver
 
     def daemon_thread_ready daemon
       puts "Daemon thread started for #{daemon.name}"
-      Tactic.new daemon, @_ip_port, @_node_name, "DAEMON" 
+      Tactic.new daemon, @_ip_port, @_node_name, "DAEMON", @_logger
     end
 
     # -----------------------------------------
@@ -57,6 +58,7 @@ module TacticSolver
       if pool.empty? then
         puts "[INFO]: Expanding tactic thread pool with tactic '#{tactic[:name]}'"
         TacticThread.new tactic[:dir_name], self
+        @_logger.log "create_tactic_instance", tactic["name"]
 
       end
 
@@ -71,8 +73,9 @@ module TacticSolver
     end
 
     def serve_tactic_request tactic_thread, what, user_info
+      @_logger.log "serve_truth_request", tactic_thread.name, what, user_info
       options = {:what => what}
-      Tactic.new tactic_thread, @_ip_port, @_node_name, user_info, options
+      Tactic.new tactic_thread, @_ip_port, @_node_name, user_info, @_logger, options
     end
 
     def learn_about_tactics

@@ -94,12 +94,13 @@ module TacticSolver
   # All signposts are themselves responsible for distributing their own truths
   # to other signposts.
   class CommunicationCentre
-    def initialize solver, signpost_domain
+    def initialize solver, signpost_domain, logger
       @_solver = solver
       @_domain = signpost_domain
       @_channels = []
       @_name = "server"
       @_listen_port = 8987
+      @_logger = logger
 
       setup_comms_server
       find_signpost_from_dns
@@ -111,31 +112,41 @@ module TacticSolver
 
     def new_channel channel
       @_channels << channel
+      @_logger.log "new_signpost_connection", channel.name
 
       # Ask the channel for it's list of connections
       data = {"action" => "list_of_signposts"}
       channel.send data
+      @_logger.log "request_remote_signposts", channel.name
 
       # Ask the other signpost for its truths
       data = {"action" => "gimme_truths"}
       channel.send data
+      @_logger.log "request_remote_truths", channel.name
     end
 
     def channel_closed channel
       puts "TODO: Channel to #{channel.name} was terminated"
+      @_logger.log "signpost_connection_closed", channel.name
     end
 
     def receive channel, data
       perform_action_for_remote_signpost channel, data["action"] if data["action"]
       connect_to_signposts data["signposts"] if data["signposts"]
-      handle_new_truths data["truths"] if data["truths"]
-      resolve data["resolve"] if data["resolve"]
+      handle_new_truths channel, data["truths"] if data["truths"]
+      resolve channel, data["resolve"] if data["resolve"]
     end
 
     def distribute_truths truths
       data = {"truths" => truths}
       @_channels.each do |channel|
         channel.send data
+        # This is really spammy logging
+        truths.each do |truth|
+          # TODO: Only log part of the truth? Maybe not the truth value? What
+          # if it is sensitive data?
+          @_logger.log "send_truth", channel.name, *truth
+        end
       end
     end
 
@@ -148,6 +159,8 @@ module TacticSolver
     end
 
     def remote_resolve what, user_info, signpost
+      @_logger.log "resolve_truth_remotely", signpost, what, user_info
+
       # Get the channel for the signpost where the truth should be resolved
       channel = (@_channels.select do |s|
         s.name == signpost
@@ -173,6 +186,7 @@ module TacticSolver
           {"name" => c.name, "ip" => ip, "port" => port}}
         }
         channel.send data
+        @_logger.log "return_list_of_signposts", channel.name
 
       when "gimme_truths"
         # return all the truths we currently hold
@@ -182,6 +196,7 @@ module TacticSolver
           data = {"truths" => truths}
           channel.send data
         end
+        @_logger.log "return_list_of_truths", channel.name
 
       end
     end
@@ -191,16 +206,21 @@ module TacticSolver
         unless signpost["name"] == @_name then
           unless @_channels.index {|c| c.name == signpost["name"]} then
             connect_to_signpost signpost["ip"], signpost["port"]
+            @_logger.log "initiate_connection_to_signpost", signpost["name"]
+
           end
         end
       end
     end
 
-    def handle_new_truths truths
+    def handle_new_truths channel, truths
       truths.each {|truth| @_solver.add_external_truth truth}
+      truths.each do |truth|
+        @_logger.log "adding_remote_truth", channel.name, *truth
+      end
     end
 
-    def resolve query
+    def resolve channel, query
       what = query["what"]
       user_info = query["user_info"]
       options = {:what => what, :solver => @_solver.ip_port, :user_info => user_info}
@@ -210,6 +230,7 @@ module TacticSolver
         # It will automatically be sent to the other signposts
         # where it will be given to the tactic that needs it.
       end
+      @_logger.log "resolve_for_remote", channel.name, what, user_info
     end
 
     def setup_comms_server

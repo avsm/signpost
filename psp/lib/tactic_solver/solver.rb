@@ -148,14 +148,17 @@ module TacticSolver
       super options
       self.run_bg
 
+      @_logger = Logger.new
+
       # For communication with other signposts
-      @_communication_center = CommunicationCentre.new self, "sebastian.kle.io"
+      @_communication_center = CommunicationCentre.new self, "sebastian.kle.io", @_logger
       @_name = @_communication_center.name
+      @_logger.node_name = @_name
       
       add_initial_truths
 
       # Pool for tactics
-      @_thread_pool = TacticPool.new @_name, ip_port
+      @_thread_pool = TacticPool.new @_name, ip_port, @_logger
     end
 
     def add_external_truth truth
