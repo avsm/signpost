@@ -194,6 +194,10 @@ module TacticSolver
       @_thread_pool.tactics
     end
 
+    def signposts
+      @_communication_center.known_signposts
+    end
+
     # This method is called by the communication agent to
     # find the truths that are ours that we hold.
     # It also readies them for export.

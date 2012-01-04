@@ -43,6 +43,9 @@ subs
 running?
   Returns whether or not the EventMachine reactor is running
 
+signposts
+  Prints a list of the signposts the system is connected to
+
 EOF
   end
 end
@@ -84,6 +87,9 @@ while not(input =~ /exit/i)
     else
       puts "Reactor is DOWN"
     end
+
+  when /(signposts|sp)\Z/
+    pp tactic_solver.signposts
 
   else
     RunHelper.print_help

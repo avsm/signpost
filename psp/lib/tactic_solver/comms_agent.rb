@@ -112,18 +112,25 @@ module TacticSolver
     # --------------------------------------------------
 
     def new_channel channel
-      @_channels << channel
-      @_logger.log "new_signpost_connection", channel.name
+      # We don't want a signpost connecting with itself
+      unless channel.name == @_name then
+        @_channels << channel
+        @_logger.log "new_signpost_connection", channel.name
 
-      # Ask the channel for it's list of connections
-      data = {"action" => "list_of_signposts"}
-      channel.send data
-      @_logger.log "request_remote_signposts", channel.name
+        # Ask the channel for it's list of connections
+        data = {"action" => "list_of_signposts"}
+        channel.send data
+        @_logger.log "request_remote_signposts", channel.name
 
-      # Ask the other signpost for its truths
-      data = {"action" => "gimme_truths"}
-      channel.send data
-      @_logger.log "request_remote_truths", channel.name
+        # Ask the other signpost for its truths
+        data = {"action" => "gimme_truths"}
+        channel.send data
+        @_logger.log "request_remote_truths", channel.name
+
+      else
+        channel.terminate_channel
+
+      end
     end
 
     def channel_closed channel
@@ -166,6 +173,10 @@ module TacticSolver
 
     def listen_port
       @_listen_port
+    end
+
+    def known_signposts
+      @_channels.map {|c| c.name}
     end
 
     def remote_resolve what, user_info, signpost
