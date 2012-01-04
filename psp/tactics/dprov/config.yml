@@ -1,6 +1,0 @@
-name: DProv
-description: Test
-provides:
-  - d@Local
-requires:
-executable: code.rb

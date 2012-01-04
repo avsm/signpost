@@ -1,0 +1,5 @@
+name: SignpostForClient
+description: Returns an array of signpost-port arrays. If none can be found, an empty array is returned
+provides:
+  - signpost_for_client@([[:graph:]]*)
+executable: code.rb

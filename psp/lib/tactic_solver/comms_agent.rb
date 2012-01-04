@@ -244,19 +244,33 @@ module TacticSolver
     end
 
     def find_signpost_from_dns
-      # Find the signpost as given by DNS and connect to it.
-      # TODO: Find the remote channel through the tactic solver, and then
-      # connect to it.
-      ip = "127.0.0.1"
-      port = 8987
-      # connect_to_signpost ip, port
+      options = {
+        :what => "signpost_for_client@#{@_name}", 
+        :solver => @_solver.ip_port, 
+        :user_info => "SETUP",
+        :asker => "SETUP"
+      }
+      Question.new options do |truths|
+        # Use the first signpost we get, and try connecting to it
+        if truths.size > 0 then
+          domain, port = truths.first[4]
+          puts "Got domain: #{domain} and port: #{port} to connect to"
+          connect_to_signpost domain, port
+
+        else
+          raise "Cannot find a signpost to connect to for #{@_domain}. Please ensure the DNS is setup correctly."
+        end
+      end
     end
 
-    def connect_to_signpost ip, port = 8987
-      # TODO: Use tactic solver to get a connectable ip, or tunnel or whatever.
-      puts "TODO: Use tactic solver to find a way to connect to #{ip}:#{port}"
-      puts "Connecting to #{ip}:#{port}"
-      EventMachine::connect(ip, port, CommsChannelClient, self)
+    def connect_to_signpost domain, port = 8987
+      # We don't want to connect to ourselves
+      unless domain == @_name then
+        # TODO: Use tactic solver to get a connectable ip, or tunnel or whatever.
+        puts "TODO: Use tactic solver to find a way to connect to #{domain}:#{port}"
+        puts "Connecting to #{domain}:#{port}"
+        EventMachine::connect(domain, port, CommsChannelClient, self)
+      end
     end
   end
 end

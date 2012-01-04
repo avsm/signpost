@@ -1,7 +1,0 @@
-name: WithDaemonA
-description: Test tactic that also has a daemon
-provides:
-  - lemon@pie
-requires:
-executable: code.rb
-daemon: daemon.rb

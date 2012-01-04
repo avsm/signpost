@@ -146,20 +146,19 @@ module TacticSolver
 
     def initialize node_name = "default", options = {}
       @_config = Config.new
+      @_logger = Logger.new @_config
+      @_name = @_config.signpost_client
 
       super options
       self.run_bg
 
-      @_logger = Logger.new @_config
-      @_name = @_config.signpost_client
-
-      # For communication with other signposts
-      @_communication_center = CommunicationCentre.new self, @_config, @_logger
-      
       add_initial_truths
 
       # Pool for tactics
       @_thread_pool = TacticPool.new @_name, ip_port, @_logger
+      
+      # For communication with other signposts
+      @_communication_center = CommunicationCentre.new self, @_config, @_logger
     end
 
     def add_external_truth truth

@@ -1,8 +1,0 @@
-name: A
-description: Test
-provides:
-  - a@Local
-requires:
-  - a1@Local
-  - a2@Local
-executable: code.rb

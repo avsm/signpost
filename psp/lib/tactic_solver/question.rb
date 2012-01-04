@@ -4,7 +4,7 @@ module TacticSolver
     include TacticProtocol
 
     bootstrap do
-      need_truth <~ [[@solver, [@question, ip_port, @signpost, @user_info, "user_question"]]]
+      need_truth <~ [[@solver, [@question, ip_port, @signpost, @user_info, @who_asks]]]
     end
 
     bloom :question_answer do
@@ -16,6 +16,7 @@ module TacticSolver
       @solver = options.delete(:solver)
       @user_info = options.delete(:user_info)
       @signpost = options.delete(:signpost) || "ANY"
+      @who_asks = options.delete(:asker) || "question"
       @callback = block
       @return_value = nil
       @working = true
