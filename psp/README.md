@@ -9,6 +9,8 @@ On an ubuntu machine, to get from zero to up and running, do the following:
     # Update to latest rubygems
     gem install rubygems-update
     update_rubygems
+#NOTE: In ubuntu 11.04 it might be necessary to add the ruby gem executable
+#directory to your path: /var/lib/gems/1.8/bin
     gem install bundler
 
     git clone git://github.com/avsm/signpost.git
