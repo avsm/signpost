@@ -1,5 +1,14 @@
 # Personal signpost
 
+### Requirements
+
+You'll need to have the following installed and the rest of this Readme will guide you through 
+(it's assumed you already have git).
+
+- GCC (via Xcode if you're on a Mac)
+- Ruby 1.8.x
+- Other dependencies (via bundler)
+
 ### Ubuntu Quick Install
 
 On an ubuntu machine, to get from zero to up and running, do the following:
@@ -33,16 +42,6 @@ On an ubuntu machine, to get from zero to up and running, do the following:
     # Resolve your first truth
     r ip_for_domain@www.kle.io
 
-
-
-### Requirements
-
-You'll need to have the following installed and the rest of this Readme will guide you through.
-
-- GCC (via Xcode if you're on a Mac)
-- Ruby 1.8.x
-- Other dependencies (via bundler)
-
 ## GCC
 
 Required for the compilation step during the Ruby install. Xcode is the easiest way to install 
@@ -71,8 +70,11 @@ with the path to your home directory):
 
 ## Dependencies
 
-Please use bundler to install the dependencies:
+Please use bundler to install the dependencies
+(assuming you've already cloned this git repo):
 
+    cd signpost/psp    # ensure you're in the correct directory
+    
     gem install bundler
     bundle install
 
