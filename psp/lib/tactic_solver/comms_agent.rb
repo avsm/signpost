@@ -262,7 +262,7 @@ module TacticSolver
       begin
         EventMachine::start_server(@_listen_ip, @_listen_port, CommsChannelServer, self)
         puts "Running signpost #{@_name} listening on #{@_listen_ip}:#{@_listen_port}"
-      rescue e
+      rescue RuntimeError => e
         raise "#{@_name} cannot listen on #{@_listen_ip}:#{@_listen_port}: #{e}"
       end
     end
