@@ -1,0 +1,9 @@
+# Requires user iodine on the system
+name: iodine
+description: Provides IP over DNS tunnel using iodine
+provides:
+  - connectable_ip@([[:graph:]]*)
+requires:
+  - local_ip@Destination
+executable: tactic.rb
+daemon: daemon.rb
