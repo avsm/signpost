@@ -13,7 +13,7 @@ On an ubuntu machine, to get from zero to up and running, do the following:
 
     git clone git://github.com/avsm/signpost.git
     cd signpost/psp
-    bundle setup
+    bundle install
 
     cp config.yml.sample config.yml
     vim config.yml
