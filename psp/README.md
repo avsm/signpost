@@ -1,5 +1,35 @@
 # Personal signpost
 
+### Ubuntu Quick Install
+
+On an ubuntu machine, to get from zero to up and running, do the following:
+
+    apt-get install git vim ruby1.8 rubygems
+
+    # Update to latest rubygems
+    gem install rubygems-update
+    update_rubygems
+    gem install bundler
+
+    git clone git://github.com/avsm/signpost.git
+    cd signpost/psp
+    bundle setup
+
+    cp config.yml.sample config.yml
+    vim config.yml
+    # Edit signpost_client to SOMETHING.kle.io
+    
+    # Test setup
+    ruby runner_tactic_solver.rb
+
+    # See which signposts you are connected to:
+    sp
+
+    # Resolve your first truth
+    r ip_for_domain@www.kle.io
+
+
+
 ### Requirements
 
 You'll need to have the following installed and the rest of this Readme will guide you through.
