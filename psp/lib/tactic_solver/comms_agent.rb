@@ -274,8 +274,9 @@ module TacticSolver
         :user_info => "SETUP",
         :asker => "SETUP"
       }
-      Question.new options do |truths|
+      Question.new options do |res|
         # Use the first signpost we get, and try connecting to it
+        truths = res.to_a
         if truths.size > 0 then
           domain, port = truths.first[4]
           connect_to_signpost domain, port
