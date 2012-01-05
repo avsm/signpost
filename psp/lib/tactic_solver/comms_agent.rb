@@ -128,7 +128,6 @@ module TacticSolver
         @_logger.log "request_remote_truths", channel.name
 
       else
-        puts "It's trying to connect to itself"
         channel.terminate_channel
 
       end

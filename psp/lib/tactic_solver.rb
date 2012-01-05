@@ -1,4 +1,5 @@
-require "rubygems"
+require 'rubygems'
+require 'bundler/setup'
 require 'bud'
 require 'pp'
 
