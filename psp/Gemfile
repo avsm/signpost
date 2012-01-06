@@ -6,6 +6,7 @@ gem "net-dns", :git => "git://github.com/sebastian/net-dns.git"
 gem "ZenTest"
 gem "minitest"
 gem "rexec"
+gem "dnsruby"
 
 gem "thin"
 

@@ -35,8 +35,9 @@ module Signpost
     # For use by the Client Resolver
     # Resolve an address to an ip
     get "/v1/address/:domain" do
-      user_info = request.env["user_info"]
+      # request = Rack::Request.new(env)
       domain = params[:domain]
+      user_info = request.env["signpost.user"]
       return Solver::resolve "ip_for_domain@#{domain}", user_info
     end
 
@@ -49,7 +50,7 @@ module Signpost
     # For use by signposts
     # Get the key of a device
     get "/v1/keys/:device" do
-      user_info = request.env["user_info"]
+      user_info = request.env["signpost.user"]
       device = params[:device]
       # TODO: Implement key_for_device tactic
       return Solver::resolve "key_for_device@#{device}", user_info
@@ -58,11 +59,11 @@ module Signpost
     # -----------------------------------------------
     # DEPRECATED access patterns
     # -----------------------------------------------
-    
+
     # We are deprecating the use of the unversioned interface
     # Instead, use /v1/address/:url
     get "/address/:domain" do
-      user_info = request.env["user_info"]
+      user_info = request.env["signpost.user"]
       domain = params[:domain]
       reply = JSON.parse(Solver::resolve "ip_for_domain@#{domain}", user_info)
       reply[:warning] = "/address is deprecated. Use /v1/address instead"
