@@ -46,7 +46,7 @@ dns_server = RubyDNS::run_server(:listen => [[:udp, ip, port]]) do
     s.close
 
     if reply["status"] == "OK" then
-      ips = reply["ips"]
+      ips = reply["result"]
       ips.each do |ip|
         transaction.respond!(ip)
       end

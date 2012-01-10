@@ -39,7 +39,7 @@ class SolvingServer < EventMachine::Connection
         @received_results = true
         results = []
         truths.to_a.each do |truth|
-          truth_name, who, user_info, answer = truth
+          truth_name, who, user_info, signpost, answer = truth
           answer.class == Array ? answer.each {|a| results << a} : results << answer
         end
         reply = {
