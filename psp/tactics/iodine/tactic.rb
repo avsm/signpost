@@ -21,13 +21,10 @@ module Iodine
     # Set the callbacks, so we can handle if the server shuts down.
     deferrable.callback do |d|
       helper.log "Tunnel setup. Notify client"
-      helper.log "Got data: #{d}"
 
-      # helper.provide_truth "iodined_running@#{truths[:node_name][:value]}", 
-      #     true, a_day, true
+      helper.provide_truth truths[:what][:value], "10.0.0.1", ten_minutes, false
 
-      # helper.provide_truth "iodined_password@#{truths[:node_name][:value]}",
-      #     password, a_day, true
+      # Should we tear down the channel again later?
     end
 
     deferrable.errback do
