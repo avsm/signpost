@@ -6,6 +6,5 @@ provides:
 requires:
   - local_ips@Destination
   - iodined_password@Destination
-  - iodined_port@Destination
 executable: tactic.rb
 daemon: daemon.rb
