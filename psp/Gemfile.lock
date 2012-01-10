@@ -40,6 +40,7 @@ GEM
       multi_json (~> 1.0)
     backports (2.3.0)
     daemons (1.1.4)
+    dnsruby (1.53)
     eventmachine (0.12.10)
     fastercsv (1.5.4)
     gchart (1.0.0)
@@ -95,6 +96,7 @@ DEPENDENCIES
   ZenTest
   bud!
   daemons
+  dnsruby
   json
   minitest
   net-dns!

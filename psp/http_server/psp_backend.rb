@@ -1,6 +1,8 @@
 require 'http_server/psp_connection'
 require 'pp'
 
+#module Thin
+#class PspServer < Thin::Backends::Base
 module Signpost
   module Backends
     # Backend to act as a TCP socket server.
@@ -17,7 +19,7 @@ module Signpost
 
       # Connect the server
       def connect
-        puts "psp connect method called\n"
+        puts "psp connect method collaed\n"
         @signature = EventMachine.start_server(@host, @port, PspConnection, &method(:initialize_connection))
       end
 
@@ -38,9 +40,9 @@ module Signpost
         connection.comm_inactivity_timeout = @timeout
         connection.threaded = @threaded
 
-        connection.start_tls(:private_key_file => 'ssl-keys/server.key.insecure', 
-                                                  :cert_chain_file => 'ssl-keys/server.crt', 
-                                                  :verify_peer => true)
+        connection.start_tls(:private_key_file => 'dnssec/narseo.key', 
+                             :cert_chain_file => 'dnssec/narseo.crt', 
+                             :verify_peer => true)
 
         # We control the number of persistent connections by keeping
         # a count of the total one allowed yet.
