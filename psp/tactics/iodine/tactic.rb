@@ -35,6 +35,12 @@ end
 
 tactic = TacticHelper.new
 
+# We need the local IP of the machine we are connecting to!
+tactic.when do |helper, truths|
+  remote_signpost = truths[:domain][:value]
+  helper.need_truth "local_ips", {:signpost => remote_signpost}
+end
+
 tactic.when :local_ips, :iodined_password do |helper, truths|
   # We don't want to setup tunnels to ourselves! That would be silly
   unless truths[:node_name][:value] == truths[:domain][:value] then

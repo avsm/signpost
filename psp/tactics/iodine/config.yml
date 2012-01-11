@@ -4,7 +4,6 @@ description: Provides IP over DNS tunnel using iodine
 provides:
   - connectable_ip@([[:graph:]]*)
 requires:
-  - local_ips@Destination
   - iodined_password@Destination
 executable: tactic.rb
 daemon: daemon.rb
