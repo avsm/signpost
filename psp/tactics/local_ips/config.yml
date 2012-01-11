@@ -1,5 +1,5 @@
 name: local_ips
 description: Provides the IP addresses of the given signpost
 provides:
-  - local_ips@Local
+  - local_ips@([[:graph:]]*)
 executable: local_ips.rb

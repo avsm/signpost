@@ -194,6 +194,9 @@ private
           todo[:requirements].each do |req|
             versions[req] = @_data[req][:version]
           end
+          # Also add the node_name. This way, blocks with no explicit
+          # requirements, only get executed one.
+          versions[:node_name] = @_data[:node_name][:version]
           todo[:req_versions] = versions
           should_execute_block = true
 
@@ -271,8 +274,6 @@ private
         rescue TacticSolver::ResourceTypeException
           # Not a proper resource... ignore it
         end
-        
-        log "Received #{short_form} -> #{value}"
 
         @_pending.delete(short_form.to_sym)
 
@@ -282,6 +283,8 @@ private
         # We have previous data. Increase the version number of the new data we
         # are inserting to replace the previous version.
         data_to_store[:version] = prev_data[:version] + 1 if prev_data
+
+        log "Received #{short_form} -> #{value} (version: #{data_to_store[:version]})"
 
         # This is a little nasty... we store tons of dupes, unless they all
         # reference the same object of course...

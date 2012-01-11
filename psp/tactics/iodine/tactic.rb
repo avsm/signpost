@@ -16,19 +16,24 @@ module Iodine
 
     # Start the iodined server
     iodine_cmd = "sudo iodine -P #{password} #{ip_address} #{domain}" 
-    deferrable = EventMachine::DeferrableChildProcess.open(iodined_cmd)
+    helper.log iodine_cmd
+    deferrable = EventMachine::DeferrableChildProcess.open(iodine_cmd)
 
     # Set the callbacks, so we can handle if the server shuts down.
     deferrable.callback do |d|
       helper.log "Tunnel setup. Notify client"
+      helper.provide_truth "connectable_ip@#{truths[:domain][:value]}", "10.0.0.1", ten_minutes, false
 
-      helper.provide_truth truths[:what][:value], "10.0.0.1", ten_minutes, false
+      # TODO: Should we tear down the channel again later?
 
-      # Should we tear down the channel again later?
+      # EM.add_timer(1) do
+      #   helper.recycle_tactic
+      # end
     end
 
     deferrable.errback do
       helper.log "Tunnel setup failed. Do something"
+      helper.recycle_tactic
     end
   end
 end
@@ -37,21 +42,24 @@ tactic = TacticHelper.new
 
 # We need the local IP of the machine we are connecting to!
 tactic.when do |helper, truths|
-  remote_signpost = truths[:domain][:value]
-  helper.need_truth "local_ips", {:signpost => remote_signpost}
-end
-
-tactic.when :local_ips, :iodined_password do |helper, truths|
-  # We don't want to setup tunnels to ourselves! That would be silly
   unless truths[:node_name][:value] == truths[:domain][:value] then
-    Iodine::start_client helper, truths
+    remote_signpost = truths[:domain][:value]
+
+    helper.log "Requesting that we need a truth (local_ips and iodined_password)"
+    helper.need_truth "local_ips", {:signpost => remote_signpost}
+    helper.need_truth "iodined_password", {:signpost => remote_signpost}
 
   else
     helper.log "We don't want to create a bridge to ourselves"
+    helper.recycle_tactic
 
   end
-  helper.recycle_tactic
 end
+
+tactic.when :local_ips, :iodined_password do |helper, truths|
+  Iodine.start_client helper, truths
+end
+
 
 # We need to initialize the tactic, otherwise nothing will ever happen
 tactic.run

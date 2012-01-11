@@ -21,14 +21,17 @@ end
 tactic = TacticHelper.new
 
 tactic.when do |helper, truths|
-  # Since we are using ruby 1.8.7 we don't have Socket.ip_address_list
-  # so we need to resort to a roundabout kind of solution
+  if truths[:node_name][:value] == truths[:domain][:value] then
+    # Since we are using ruby 1.8.7 we don't have Socket.ip_address_list
+    # so we need to resort to a roundabout kind of solution
 
-  ten_minutes = 10*60
-  own_ips = [IpAddress.local_ip]
+    ten_minutes = 10*60
+    own_ips = [IpAddress.local_ip]
 
-  # provide_truth: TRUTH, VALUE, TTL, GLOBAL?
-  helper.provide_truth truths[:what][:value], own_ips, ten_minutes, true
+    # provide_truth: TRUTH, VALUE, TTL, GLOBAL?
+    helper.provide_truth truths[:what][:value], own_ips, ten_minutes, true
+  end
+
   helper.recycle_tactic
 end
 

@@ -19,6 +19,7 @@ module Iodined
 
     # Start the iodined server
     iodined_cmd = "sudo iodined -f -P #{password} 10.0.0.1 #{domain}" 
+    helper.log iodined_cmd
     deferrable = EventMachine::DeferrableChildProcess.open(iodined_cmd)
 
     helper.provide_truth "iodined_running@#{truths[:node_name][:value]}", 

@@ -30,7 +30,7 @@ module TacticSolver
           e = JSON.parse(d)
           @_delegate.received_data e
         rescue JSON::ParserError
-          $stderr.puts "Couldn't parse the input"
+          $stderr.puts "Couldn't parse the input in #{@_delegate.name} tactic"
         end
       end
     end
