@@ -9,17 +9,20 @@ module SignpostFinder
   def self.resolve domain
     resolver = Net::DNS::Resolver.new()
     req_str = "_signpost._tcp.#{domain.join(".")}"
-    packet = Net::DNS::Packet.new(req_str, Net::DNS::SRV)
+    # packet = Net::DNS::Packet.new(req_str, Net::DNS::SRV)
 
     answers = []
-    resolver.send(packet, Net::DNS::SRV).answer.each do |rr|
-      # We got an SRV packet, hopefully :)
-      host = rr.host
-      # Remove trailing 'dot' if present
-      host_array = host.split("")
-      host = host_array[0...(host_array.size-1)].join("") if host_array.last == "."
+    # resolver.send(packet, Net::DNS::SRV).answer.each do |rr|
+    resolver.send(req_str, Net::DNS::SRV).answer.each do |rr|
+      if rr.class == Net::DNS::RR::SRV then
+        # We got an SRV packet, hopefully :)
+        host = rr.host
+        # Remove trailing 'dot' if present
+        host_array = host.split("")
+        host = host_array[0...(host_array.size-1)].join("") if host_array.last == "."
 
-      answers << [host, rr.port]
+        answers << [host, rr.port]
+      end
     end
 
     answers
