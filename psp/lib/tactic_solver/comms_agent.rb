@@ -197,22 +197,7 @@ module TacticSolver
 
       # We broadcast instead! Woho!
       data = {"resolve" => {"what" => what, "user_info" => user_info, "signpost" => signpost}}
-      broadcast data, signpost
-
-      # # Get the channel for the signpost where the truth should be resolved
-      # channel = (@_channels.select do |s|
-      #   s.name == signpost
-      # end).first
-      # # Resolve the truth request by sending it to the signpost that
-      # # should resolve it.
-      # if channel then
-      #   data = {"resolve" => {"what" => what, "user_info" => user_info}}
-      #   channel.send data
-      #   []
-      # else
-      #   puts "ERROR: Trying to resolve '#{what}' for #{user_info} on node #{signpost} that doesn't exist"
-      # end
-
+      broadcast data, name
     end
 
   private
