@@ -1,0 +1,7 @@
+# Requires user iodine on the system
+name: openvpn
+description: Provides OpenVPN connectivity
+provides:
+  - connectable_ip@([[:graph:]]*)
+executable: tactic.rb
+daemon: daemon.rb

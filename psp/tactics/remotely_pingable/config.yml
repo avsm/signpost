@@ -1,0 +1,4 @@
+name: remotely_pingable
+description: Provides whether a node is remotely pingable or not
+provides:
+daemon: remotely_pingable.rb

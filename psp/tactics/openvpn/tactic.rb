@@ -22,8 +22,7 @@ module Iodine
     # Set the callbacks, so we can handle if the server shuts down.
     deferrable.callback do |d|
       helper.log "Tunnel setup. Notify client: #{d}"
-      server_ip = truths[:iodined_ip][:value]
-      helper.provide_truth "connectable_ip@#{truths[:domain][:value]}", server_ip, ten_minutes, false
+      helper.provide_truth "connectable_ip@#{truths[:domain][:value]}", "10.0.0.1", ten_minutes, false
 
       # TODO: Should we tear down the channel again later?
 
@@ -49,7 +48,6 @@ tactic.when do |helper, truths|
     helper.log "Requesting that we need a truth (local_ips and iodined_password)"
     helper.need_truth "local_ips", {:signpost => remote_signpost}
     helper.need_truth "iodined_password", {:signpost => remote_signpost}
-    helper.need_truth "iodined_ip", {:signpost => remote_signpost}
 
   else
     helper.log "We don't want to create a bridge to ourselves"
@@ -58,7 +56,7 @@ tactic.when do |helper, truths|
   end
 end
 
-tactic.when :local_ips, :iodined_password, :iodined_ip do |helper, truths|
+tactic.when :local_ips, :iodined_password do |helper, truths|
   Iodine.start_client helper, truths
 end
 

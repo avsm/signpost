@@ -1,0 +1,4 @@
+name: public_ip
+description: Provides the public IP addresses of the given signpost
+provides:
+daemon: public_ip.rb

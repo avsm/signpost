@@ -148,7 +148,7 @@ module TacticSolver
       @_name = config['name']
       @_description = config['description']
 
-      @_provides = config['provides'].map {|p| Tactic.deal_with_magic p, @_owner.name}
+      @_provides = config['provides'].map {|p| Tactic.deal_with_magic p, @_owner.name} if config['provides']
       @_requires = config['requires']
       @_executable = config['executable']
       # If the tactic has listed an executable, then we need to check for it
@@ -422,9 +422,11 @@ module TacticSolver
       config = YAML::load(File.open("tactics/#{dir_name}/config.yml"))
       name = config['name']
       provides = []
-      config['provides'].each {|something| 
-        provides << Regexp.new("^#{Tactic.deal_with_magic(something, node_name)}")
-      }
+      if config['provides'] then
+        config['provides'].each {|something| 
+          provides << Regexp.new("^#{Tactic.deal_with_magic(something, node_name)}")
+        }
+      end
       has_daemon = config["daemon"] ? true : false
       {
         :name => name, 
