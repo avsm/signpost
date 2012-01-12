@@ -1,3 +1,5 @@
+require 'digest/sha1'
+
 module TacticSolver
   # Channel between objects
   #
@@ -150,6 +152,12 @@ module TacticSolver
     end
 
     def receive channel, data
+      # We got some new fancy data. Send it to all the others as well!
+      # As long as it is about resolving truths, or spreading truths
+      if data["truths"] or data["resolve"] then
+        broadcast data, channel.name
+      end
+
       perform_action_for_remote_signpost channel, data["action"] if data["action"]
       connect_to_signposts data["signposts"] if data["signposts"]
       handle_new_truths channel, data["truths"] if data["truths"]
@@ -184,23 +192,71 @@ module TacticSolver
     def remote_resolve what, user_info, signpost
       @_logger.log "resolve_truth_remotely", signpost, what, user_info
 
-      # Get the channel for the signpost where the truth should be resolved
-      channel = (@_channels.select do |s|
-        s.name == signpost
-      end).first
-      # Resolve the truth request by sending it to the signpost that
-      # should resolve it.
-      if channel then
-        data = {"resolve" => {"what" => what, "user_info" => user_info}}
-        channel.send data
-        []
-      else
-        puts "ERROR: Trying to resolve '#{what}' for #{user_info} on node #{signpost} that doesn't exist"
-      end
+      # We broadcast instead! Woho!
+      data = {"resolve" => {"what" => what, "user_info" => user_info, "signpost" => signpost}}
+      broadcast data, name
+
+      # # Get the channel for the signpost where the truth should be resolved
+      # channel = (@_channels.select do |s|
+      #   s.name == signpost
+      # end).first
+      # # Resolve the truth request by sending it to the signpost that
+      # # should resolve it.
+      # if channel then
+      #   data = {"resolve" => {"what" => what, "user_info" => user_info}}
+      #   channel.send data
+      #   []
+      # else
+      #   puts "ERROR: Trying to resolve '#{what}' for #{user_info} on node #{signpost} that doesn't exist"
+      # end
 
     end
 
   private
+    def broadcast data, original_sender
+      return unless should_broadcast? data
+
+      # Get all channels, except the sender that gave us the data
+      channels = (@_channels.select do |s|
+        s.name != original_sender
+      end)
+
+      channels.each do |channel|
+        channel.send data
+      end
+    end
+
+    def should_broadcast? data
+      key = Digest::SHA1.hexdigest(data.to_s)
+      broadcast_cache[key] ? false : true
+    end
+
+    def about_to_broadcast data
+      cache = broadcast_cache
+      key = Digest::SHA1.hexdigest(data.to_s)
+      cache[key] = Time.now.to_i
+      @_broadcast_cache = cache
+    end
+
+    def broadcast_cache
+      unless @_broadcast_cache then
+        @_broadcast_cache = {}
+        prune_broadcast_cache
+      end
+      @_broadcast_cache
+    end
+
+    def prune_broadcast_cache
+      EM.add_timer(5) do
+        now = Time.now.to_i
+        @_broadcast_cache.delete_if do |key, timestamp|
+          # Delete the entry if it is older than 10 seconds
+          timestamp < now - 10
+        end
+        prune_broadcast_cache
+      end
+    end
+
     def perform_action_for_remote_signpost channel, action
       case action
       when "list_of_signposts"

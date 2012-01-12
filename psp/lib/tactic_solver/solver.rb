@@ -202,10 +202,12 @@ module TacticSolver
     # find the truths that are ours that we hold.
     # It also readies them for export.
     def exportable_truths
-      # We only export truths that are from this signpost
-      exports = self.truths.to_a.select do |t|
-        t[3] == @_name
-      end
+      # Now that we are doing broadcast, we want to export all truths
+      exports = self.truths.to_a
+      # # We only export truths that are from this signpost
+      # exports = self.truths.to_a.select do |t|
+      #   t[3] == @_name
+      # end
       # Turns TTL from a timestamp, back into a regular TTL
       results = exports.map do |t|
         ttl_state = t[-1]

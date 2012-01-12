@@ -5,8 +5,8 @@
 # For Signpost devs: please do not check your config into the repo.
 
 # Naming the signpost node
-signpost_domain: kle.io
-signpost_client: lab.kle.io
+signpost_domain: signpo.st
+signpost_client: CLIENT_NAME.signpo.st
 description: Signpost running on desktop machine in the lab
 
 # Setting up comms
