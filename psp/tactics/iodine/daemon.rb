@@ -69,6 +69,8 @@ tactic.when do |helper, truths|
 end
 
 tactic.when :is_nameserver do |helper, truths|
+  return unless truths[:is_nameserver][:signpost] == truths[:node_name][:value]
+
   if truths[:is_nameserver][:value] then
     helper.log "Is nameserver, will setup iodined"
     Iodined.start_server helper, truths

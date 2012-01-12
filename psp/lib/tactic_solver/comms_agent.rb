@@ -217,9 +217,6 @@ module TacticSolver
 
   private
     def broadcast data, original_sender
-      puts "Broadcasting data:"
-      pp data
-
       # Get all channels, except the sender that gave us the data
       channels = (@_channels.select do |s|
         s.name != original_sender
@@ -233,13 +230,11 @@ module TacticSolver
     end
 
     def should_broadcast? data
-      puts "Should it broadcast?"
       key = Digest::SHA1.hexdigest(data.to_s)
       broadcast_cache[key] ? false : true
     end
 
     def about_to_broadcast data
-      puts "Adding data to broadcast cache"
       cache = broadcast_cache
       key = Digest::SHA1.hexdigest(data.to_s)
       cache[key] = Time.now.to_i
@@ -247,9 +242,7 @@ module TacticSolver
     end
 
     def broadcast_cache
-      puts "Getting broadcast cache"
       unless @_broadcast_cache then
-        puts "Creating broadcast cache"
         @_broadcast_cache = {}
         prune_broadcast_cache
       end
