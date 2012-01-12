@@ -53,7 +53,7 @@ module TacticSolver
 
           end
         rescue JSON::ParserError
-          $stderr.puts "Couldn't parse the input"
+          $stderr.puts "Couldn't parse the input in the CommunicationManager: #{data}"
         end
       end
     end
@@ -214,10 +214,7 @@ module TacticSolver
 
   private
     def broadcast data, original_sender
-      puts "Should broadcast?"
       return unless should_broadcast? data
-      puts "broadcasting:"
-      pp data
 
       # Get all channels, except the sender that gave us the data
       channels = (@_channels.select do |s|
