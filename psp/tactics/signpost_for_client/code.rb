@@ -12,7 +12,7 @@ module SignpostFinder
     packet = Net::DNS::Packet.new(req_str, Net::DNS::SRV)
 
     answers = []
-    resolver.send(packet).answer.each do |rr|
+    resolver.send(packet, Net::DNS::SRV).answer.each do |rr|
       # We got an SRV packet, hopefully :)
       host = rr.host
       # Remove trailing 'dot' if present
