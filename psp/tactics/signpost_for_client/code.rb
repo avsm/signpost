@@ -6,14 +6,18 @@ require 'net/dns/resolver'
 require 'lib/tactic_solver/tactic_helper'
 
 module SignpostFinder
-  def self.resolve domain
-    resolver = Net::DNS::Resolver.new()
+  def self.resolve domain, helper
+    helper.log "Looking up domain: #{domain}"
+
+    resolver = Net::DNS::Resolver.new
     req_str = "_signpost._tcp.#{domain.join(".")}"
     # packet = Net::DNS::Packet.new(req_str, Net::DNS::SRV)
 
     answers = []
     # resolver.send(packet, Net::DNS::SRV).answer.each do |rr|
     resolver.send(req_str, Net::DNS::SRV).answer.each do |rr|
+      helper.log "rr.class #{rr.class}"
+
       if rr.class == Net::DNS::RR::SRV then
         # We got an SRV packet, hopefully :)
         host = rr.host
@@ -26,6 +30,10 @@ module SignpostFinder
     end
 
     answers
+
+  rescue Exception => e
+    helper.log "Got exception: #{e}"
+
   end
 end
 
@@ -41,7 +49,7 @@ tactic.when do |helper, truths|
   domain = truths[:domain][:value]
   domain_parts = domain.split "."
   0.upto(domain_parts.size-2) do |n|
-    signposts << (SignpostFinder.resolve domain_parts[n..(domain_parts.size)])
+    signposts << (SignpostFinder.resolve domain_parts[n..(domain_parts.size)], helper)
   end
 
   # This truth can be cached, and is global
