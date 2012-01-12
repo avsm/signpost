@@ -197,7 +197,7 @@ module TacticSolver
 
       # We broadcast instead! Woho!
       data = {"resolve" => {"what" => what, "user_info" => user_info, "signpost" => signpost}}
-      broadcast data, name
+      broadcast data, signpost
 
       # # Get the channel for the signpost where the truth should be resolved
       # channel = (@_channels.select do |s|
@@ -217,10 +217,15 @@ module TacticSolver
 
   private
     def broadcast data, original_sender
+      puts "Broadcasting data:"
+      pp data
+
       # Get all channels, except the sender that gave us the data
       channels = (@_channels.select do |s|
         s.name != original_sender
       end)
+
+      about_to_broadcast data
 
       channels.each do |channel|
         channel.send data
@@ -228,11 +233,13 @@ module TacticSolver
     end
 
     def should_broadcast? data
+      puts "Should it broadcast?"
       key = Digest::SHA1.hexdigest(data.to_s)
       broadcast_cache[key] ? false : true
     end
 
     def about_to_broadcast data
+      puts "Adding data to broadcast cache"
       cache = broadcast_cache
       key = Digest::SHA1.hexdigest(data.to_s)
       cache[key] = Time.now.to_i
@@ -240,7 +247,9 @@ module TacticSolver
     end
 
     def broadcast_cache
+      puts "Getting broadcast cache"
       unless @_broadcast_cache then
+        puts "Creating broadcast cache"
         @_broadcast_cache = {}
         prune_broadcast_cache
       end
@@ -251,8 +260,8 @@ module TacticSolver
       EM.add_timer(5) do
         now = Time.now.to_i
         @_broadcast_cache.delete_if do |key, timestamp|
-          # Delete the entry if it is older than 10 seconds
-          timestamp < now - 10
+          # Delete the entry if it is older than 30 seconds
+          timestamp < now - 30
         end
         prune_broadcast_cache
       end
