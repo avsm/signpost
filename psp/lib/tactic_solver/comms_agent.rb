@@ -161,7 +161,7 @@ module TacticSolver
       perform_action_for_remote_signpost channel, data["action"] if data["action"]
       connect_to_signposts data["signposts"] if data["signposts"]
       handle_new_truths channel, data["truths"] if data["truths"]
-      resolve channel, data["resolve"] if data["resolve"]
+      resolve channel, data["resolve"] if data["resolve"] and data["resolve"]["signpost"] == name
     end
 
     def distribute_truths truths
@@ -214,7 +214,10 @@ module TacticSolver
 
   private
     def broadcast data, original_sender
+      puts "Should broadcast?"
       return unless should_broadcast? data
+      puts "broadcasting:"
+      pp data
 
       # Get all channels, except the sender that gave us the data
       channels = (@_channels.select do |s|
