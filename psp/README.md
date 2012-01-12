@@ -31,7 +31,9 @@ On an ubuntu machine, to get from zero to up and running, do the following:
 
     cp config.yml.sample config.yml
     vim config.yml
-    # Edit signpost_client to SOMETHING.kle.io
+    # Edit signpost_client to SOMETHING.SIGNPOST_DOMAIN
+    # Where SOMETHING is the client name, and SIGNPOST_DOMAIN is the
+    # signpost domain your signpost is part of.
     
     # Test setup
     ruby runner_tactic_solver.rb
