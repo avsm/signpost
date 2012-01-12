@@ -76,6 +76,9 @@ tactic.when :is_nameserver do |helper, truths|
     Iodined.start_server helper, truths
   else
     helper.log "Is NOT nameserver, will NOT setup iodined"
+    a_day = 24 * 60 * 60
+    helper.provide_truth "iodined_running@#{truths[:node_name][:value]}", 
+        false, a_day, true
   end
 end
 

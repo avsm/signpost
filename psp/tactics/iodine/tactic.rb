@@ -41,13 +41,23 @@ tactic = TacticHelper.new
 tactic.when do |helper, truths|
   unless truths[:node_name][:value] == truths[:domain][:value] then
     remote_signpost = truths[:domain][:value]
-    helper.need_truth "iodined_password", {:signpost => remote_signpost}
-    helper.need_truth "iodined_ip", {:signpost => remote_signpost}
+    helper.need_truth "iodined_running", {:domain => remote_signpost}
 
   else
     helper.log "We don't want to create a bridge to ourselves"
     helper.recycle_tactic
 
+  end
+end
+
+tactic.when :iodined_running do |helper, truths|
+  if truths[:iodined_running][:value] then
+    remote_signpost = truths[:domain][:value]
+    helper.need_truth "iodined_password", {:signpost => remote_signpost}
+    helper.need_truth "iodined_ip", {:signpost => remote_signpost}
+  else
+    helper.log "IODINED is not running on the remote machine. Cannot setup connection."
+    helper.recycle_tactic
   end
 end
 
