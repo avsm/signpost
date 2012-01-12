@@ -152,6 +152,9 @@ module TacticSolver
     end
 
     def receive channel, data
+      # We don't want to act on, or broadcast data we have already seen!
+      return unless should_broadcast? data
+
       # We got some new fancy data. Send it to all the others as well!
       # As long as it is about resolving truths, or spreading truths
       if data["truths"] or data["resolve"] then
@@ -214,8 +217,6 @@ module TacticSolver
 
   private
     def broadcast data, original_sender
-      return unless should_broadcast? data
-
       # Get all channels, except the sender that gave us the data
       channels = (@_channels.select do |s|
         s.name != original_sender
