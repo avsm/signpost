@@ -19,15 +19,15 @@ def load_test(resolver, logger, test_opt):
     # for each script in folder test, load the code and run run_test function
     for test in test_opt["tests"]:
         print "running test %s"%(test)
-       
+
        # if module is noty loaded, load it
         if not test in sys.modules:
             __import__(test)
-        
+
         mymodule = sys.modules[test]
         test_log = logger.getChild(test)
-        mymodule.run_test(resolver, test_log)
-        time.sleep(10)
+        mymodule.run_test(resolver, test_log, test_opt)
+#        time.sleep(10)
 
 def capture_packets( intf, directory):
 #    print "starting packet capture at %s from fevice %s"%(directory, intf)
@@ -44,8 +44,6 @@ def capture_packets( intf, directory):
             dmp.dump(data[0], data[1])
         except socket.timeout:
             continue
-
-    
 
 def run_test(ns, measurement_id, test_opt):
     # define the folder name to store the results
@@ -66,25 +64,23 @@ def run_test(ns, measurement_id, test_opt):
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(measurement_id_str)
     print "found %d handler"%(len(logger.handlers))
-   
+
     #setup logging for the system
     if(len(logger.handlers) > 0) :
         logger.handlers[0].stream.close()
         logger.removeHandler(logger.handlers[0])
-    
+
     file_handler = logging.FileHandler(measurement_id_str + "/measurement.log")
     file_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s %(filename)s, %(lineno)d: %(message)s")
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    
-    # setup pcap capture mechanism
-    
 
     # create a tmp file that resemple a resolv.conf file with only a single name server
     os.system("echo nameserver %s > %s/tmp.resolv.conf"%(measurement_id["ns"],
             measurement_id_str))
     resolver = ldns.ldns_resolver.new_frm_file("%s/tmp.resolv.conf"%(measurement_id_str))
+    resolver.set_recursive(True)
 
     # remove resolv.conf file
     os.unlink("%s/tmp.resolv.conf"%(measurement_id_str))

@@ -6,7 +6,7 @@ import logging
 def run_test(resolver, logger):
     # create dns packet
     resolver.set_dnssec(True)
-    res = resolver.prepare_query_pkt("signpo.st", ldns.LDNS_RR_TYPE_A,
+    res = resolver.prepare_query_pkt(""+test_opt["domain"], ldns.LDNS_RR_TYPE_SOA,
             ldns.LDNS_RR_CLASS_IN, 0)
 
     res_code = res.pop(0)
@@ -15,15 +15,17 @@ def run_test(resolver, logger):
         return
 
     pkt = res.pop(0)
+    pkt.set_rd(True)
+    pkt.set_aa(True)
 
-    txt = ldns.ldns_rr_new_frm_type(ldns.LDNS_RR_TYPE_TXT)
-    # data = ldns.ldns_rdf()
-    data = ldns.ldns_rdf_new_frm_str(ldns.LDNS_RR_TYPE_TXT, "hello world!!")
-    # data.set_size(len("hello world!!"))
-    txt.push_rdf(data)
-    print "Passed pushing info"
-    pkt.push_rr(ldns.LDNS_SECTION_ANY, txt)
+    pkt.push_rr(ldns.LDNS_SECTION_ADDITIONAL,
+            ldns.ldns_rr.new_frm_str("st 3600 IN TXT hello_world!!!") )
 
+    #generate new DSA key
+    ldns.ldns_init_random(open("/dev/random","rb"), 512/8)
+    key = ldns.ldns_key.new_frm_algorithm(ldns.LDNS_SIGN_DSA, 512)
+    pkt.push_rr(ldns.LDNS_SECTION_ADDITIONAL,
+            key.key_to_rr())
     logger.warn(pkt)
 
     # send request

@@ -59,6 +59,7 @@ class SP_routing:
             return None
 
     def _lookup_mac(self, ip):
+        return "11:11:11:11:11:11"
         os.system("ping -c 1 %s > /dev/null"%(ip))
         cmd="arp -a %s"%(ip)
         p=subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)

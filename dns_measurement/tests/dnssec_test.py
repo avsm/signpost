@@ -15,6 +15,8 @@ def simple_lookup(resolver, logger, name, typ):
         return
 
     pkt = res.pop(0)
+    pkt.set_rd(True)
+    pkt.set_aa(True)
     logger.warn(pkt)
 
     # send request
@@ -37,12 +39,12 @@ def simple_lookup(resolver, logger, name, typ):
         logger.warn("name lookup failed!")
 
 
-def run_test(resolver, logger):
+def run_test(resolver, logger, test_opt):
     # create dns packet
     resolver.set_dnssec(True)
 
     # set dnssec keys as anchors
-    res = resolver.prepare_query_pkt("signpo.st", ldns.LDNS_RR_TYPE_DNSKEY,
+    res = resolver.prepare_query_pkt(""+test_opt["domain"], ldns.LDNS_RR_TYPE_DNSKEY,
             ldns.LDNS_RR_CLASS_IN, 0)
      
     res_code = res.pop(0)
@@ -51,6 +53,8 @@ def run_test(resolver, logger):
         return
 
     pkt = res.pop(0)
+    pkt.set_rd(True)
+    pkt.set_aa(True)
     logger.warn(pkt)
 
     # send request
@@ -71,18 +75,18 @@ def run_test(resolver, logger):
         print rr
         resolver.push_dnssec_anchor(rr)
 
-    simple_lookup(resolver, logger, "signpo.st", ldns.LDNS_RR_TYPE_SOA)
-    simple_lookup(resolver, logger,"signpo.st", ldns.LDNS_RR_TYPE_NS)
-    simple_lookup(resolver, logger,"haris.signpo.st", ldns.LDNS_RR_TYPE_A)
-    simple_lookup(resolver, logger,"narseo.signpo.st", ldns.LDNS_RR_TYPE_A)
-    simple_lookup(resolver, logger,"anil.signpo.st", ldns.LDNS_RR_TYPE_AAAA)
-    simple_lookup(resolver, logger,"anil.signpo.st", ldns.LDNS_RR_TYPE_AAAA)
-    simple_lookup(resolver, logger,"signpo.st", ldns.LDNS_RR_TYPE_MX)
+    simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_SOA)
+    simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_NS)
+    simple_lookup(resolver, logger, "haris."+test_opt["domain"], ldns.LDNS_RR_TYPE_A)
+    simple_lookup(resolver, logger, "narseo."+test_opt["domain"], ldns.LDNS_RR_TYPE_A)
+    simple_lookup(resolver, logger, "anil."+test_opt["domain"], ldns.LDNS_RR_TYPE_AAAA)
+    simple_lookup(resolver, logger, "anil."+test_opt["domain"], ldns.LDNS_RR_TYPE_AAAA)
+    simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_MX)
     
-    simple_lookup(resolver, logger,"_http._tcp.signpo.st", ldns.LDNS_RR_TYPE_SRV)
-    simple_lookup(resolver, logger,"andrius.signpo.st", ldns.LDNS_RR_TYPE_HINFO)
-    simple_lookup(resolver, logger,"andrius.signpo.st", ldns.LDNS_RR_TYPE_LOC)
-    simple_lookup(resolver, logger,"andrius.signpo.st", ldns.LDNS_RR_TYPE_APL)
-    simple_lookup(resolver, logger,"faulty-dnssec.signpo.st",
+    simple_lookup(resolver, logger,"_http._tcp."+test_opt["domain"], ldns.LDNS_RR_TYPE_SRV)
+    simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_HINFO)
+    simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_LOC)
+    simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_APL)
+    simple_lookup(resolver, logger,"faulty."+test_opt["domain"],
             ldns.LDNS_RR_TYPE_A)
     resolver.set_dnssec(False)
