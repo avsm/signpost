@@ -22,18 +22,20 @@
   * The type of a tactic represents how it performs its route setup. For now,
   * we just maintain a static list here, although this will eventually be 
   * more dynamic.
-  *)
+  **)
 type ty =
+  | Null (* always fails *)
   | TCP
+  | SSL
   | OpenVPN
   | SSH
   | Iodine
-  | Null
+  | Ping (* icmp "existence test" *)
 
 (**
   * A tactic instance is represented by an Lwt thread and a state indicating if
   * it is currently active or not (or being established)
-  *)
+  **)
 type mode =
   | Off
   | Starting of mode Lwt.t
@@ -44,33 +46,41 @@ type mode =
   * Overall state descriptor for a tactic instance.
   **)
 type t = {
-  name: string;
   mutable mode: mode;
   ty: ty;
 }
 
-let compare x y =
-  String.compare x.name y.name
-
-let default =
-  { name = "???"; mode=Off; ty=Null }
+(**
+  * Helper function to construct a tactic value
+  **)
+let make_tactic ?(mode=Off) ty =
+  {mode; ty }
 
 (**
   * Convert a tactic state to a human-readable string
-  *)
+  **)
 let to_string t =
-  Printf.sprintf "{ %s (%s) %s }" t.name
+  Printf.sprintf "{ %s (%s) }"
+    (match t.ty with
+      |TCP -> "TCP" 
+      |SSL -> "SSL"
+      |OpenVPN -> "OpenVPN" 
+      |SSH -> "SSH"
+      |Iodine -> "Iodine"
+      |Null -> "Null"
+      |Ping -> "Ping"
+    )
     (match t.mode with
      |Off -> "Off"
      |Starting _ -> "Starting"
      |Established _ -> "Established"
      |Stopping _ -> "Stopping"
     )
-    (match t.ty with
-      |TCP -> "TCP" 
-      |OpenVPN -> "OpenVPN" 
-      |SSH -> "SSH"
-      |Iodine -> "Iodine"
-      |Null -> "Null"
-    )
 
+(* This is required to satisfy the COMPARABLE functor *)
+let compare =
+  Pervasives.compare
+
+(* This is required to satisfy the ORDERED_TYPE_DFT functor *)
+let default =
+  { mode=Off; ty=Null }

@@ -16,21 +16,34 @@
 
 open Froc
 
-
 let test () =
   let g = Network.G.create () in
-  let cloud = { Network.name = "CLOUD" } in
-  let nat = { Network.name = "NAT" } in
-  let mobile = { Network.name = "MOBILE" } in
-  Network.G.add_vertex g cloud;
-  Network.G.add_vertex g nat;
-  Network.G.add_vertex g mobile;
-  let t1 = Tactic.({ name="Iodine"; ty=Iodine; mode=Off }) in
-  let e1 = Network.G.E.create nat t1 cloud in
-  Network.G.add_edge_e g e1;
-  let t2 = Tactic.({ name="3G-VPN"; ty=TCP; mode=Off }) in
-  let e2 = Network.G.E.create mobile t2 cloud in
-  Network.G.add_edge_e g e2;
+  (* Make some devices *)
+  let cloud = Network.(make_node ~cap:Enabled ~name:"EC2") in
+  let nat = Network.(make_node ~cap:Enabled ~name:"HomeNAT") in
+  let iphone_3g = Network.(make_node ~cap:Dumb ~name:"iPhone3G") in
+  let iphone_wifi = Network.(make_node ~cap:Dumb ~name:"iPhoneWifi") in
+  let android_3g = Network.(make_node ~cap:Enabled ~name:"Android3G") in
+  let android_wifi = Network.(make_node ~cap:Enabled ~name:"AndroidWifi") in
+  let laptop = Network.(make_node ~cap:Enabled ~name:"Laptop") in
+  (* And some connections between the devices *)
+  let edges = Tactic.([
+    nat, cloud, TCP;
+    iphone_3g, cloud, OpenVPN;
+    iphone_wifi, nat, TCP;
+    android_3g, cloud, OpenVPN;
+    android_wifi, nat, TCP;
+    laptop, nat, SSL;
+  ]) in
+  (* Populate the graph *)
+  List.iter (Network.G.add_vertex g)
+    [ cloud; nat; iphone_3g; iphone_wifi; android_3g; android_wifi];
+  List.iter (fun (src,dst,ty) ->
+    let t = Tactic.make_tactic ty in
+    let e = Network.G.E.create src t dst in
+    Network.G.add_edge_e g e
+  ) edges;
+  (* Dump it out in DOT format *)
   let oc = open_out "tmp.dot" in
   Network.DotOutput.output_graph oc g;
   close_out oc;

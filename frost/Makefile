@@ -19,6 +19,15 @@ doc: setup.data setup.bin
 test: setup.bin build
 	./setup.bin -test
 
+tmp.dot: build
+	./_build/frost.native
+
+tmp.ps: tmp.dot
+	dot -Tps $< > $@
+
+tmp.pdf: tmp.ps
+	ps2pdf $< $@
+
 clean:
 	ocamlbuild -clean
 	rm -f setup.data setup.log setup.bin

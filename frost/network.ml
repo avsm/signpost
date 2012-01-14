@@ -20,11 +20,19 @@
   * handled via a push-based FRP framework.
   **)
 
+type cap = 
+  | Enabled  (* Full signpost service present *)
+  | Dumb     (* Device cannot be sent instructions *)
+
 type node = {
   name: string;
+  cap: cap;
   (* And any other metadata in the future goes here, such as the history of the
    * node for provenance information and debugging *)
 }
+
+let make_node ?(cap=Enabled) ~name =
+  { name; cap }
 
 open Graph
 
@@ -45,7 +53,13 @@ end
   * with each node being an OrderedNode wrapper, and an edge representing
   * a single tactic. Multiple tactics are represented by multiple edges.
   *)
-module G = Imperative.Graph.ConcreteLabeled(OrderedNode)(Tactic)
+module G = Imperative.Digraph.ConcreteLabeled(OrderedNode)(Tactic)
+
+(* Retrieve a network node by its name.
+ * TODO: folding over the graph can be optimised
+ *)
+let find_node ~name g =
+  G.fold_vertex (fun b a -> if b.name = name then Some b else a) g None
 
 (**
   * Extend the graph functor with enough to output a DOT graph of the
@@ -58,7 +72,7 @@ module Display = struct
   let default_vertex_attributes _ = []
   let vertex_attributes _ = []
   let default_edge_attributes _ = []
-  let edge_attributes e = [`Label (E.label e).Tactic.name]
+  let edge_attributes e = [`Label (Tactic.to_string (E.label e)) ]
   let get_subgraph _ = None
 end
 module DotOutput = Graphviz.Dot(Display)
