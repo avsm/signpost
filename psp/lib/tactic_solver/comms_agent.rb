@@ -106,7 +106,7 @@ module TacticSolver
       @_logger = logger
 
       setup_comms_server
-      find_signpost_from_dns
+      find_signpost_from_dns unless config.signpost_domain == config.signpost_client
     end
 
     # --------------------------------------------------
