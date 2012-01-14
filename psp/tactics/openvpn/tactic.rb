@@ -5,61 +5,81 @@ require 'bundler/setup'
 require 'net/dns/resolver'
 require 'lib/tactic_solver/tactic_helper'
 
-module Iodine
-  def self.start_client helper, truths
-    a_day = 24 * 60 * 60
-    ten_minutes = 10 * 60
+module OpenVPN
+  def self.setup_client2
+    client2_cmd = "sudo iodined -f -c -P #{password} #{ip} #{domain}" 
+    deferrable = EventMachine::DeferrableChildProcess.open(client2_cmd)
 
-    password = truths[:iodined_password][:value]
-    domain = truths[:domain][:value]
-    ip_address = truths[:local_ips][:value].first
+    # Provide my IP
 
-    # Start the iodined server
-    iodine_cmd = "sudo iodine -P #{password} #{ip_address} #{domain}" 
-    helper.log iodine_cmd
-    deferrable = EventMachine::DeferrableChildProcess.open(iodine_cmd)
-
-    # Set the callbacks, so we can handle if the server shuts down.
-    deferrable.callback do |d|
-      helper.log "Tunnel setup. Notify client: #{d}"
-      helper.provide_truth "connectable_ip@#{truths[:domain][:value]}", "10.0.0.1", ten_minutes, false
-
-      # TODO: Should we tear down the channel again later?
-
-      # EM.add_timer(1) do
-      #   helper.recycle_tactic
-      # end
-    end
+    # helper.provide_truth "iodined_ip@#{truths[:node_name][:value]}", 
+    #     ip, a_day, true
 
     deferrable.errback do
-      helper.log "Tunnel setup failed. Do something"
-      helper.recycle_tactic
+      # Say if it failed...
+      #
+      # helper.provide_truth "iodined_running@#{truths[:node_name][:value]}", 
+      #     false, 24*60*60, true
+    end
+
+  end
+
+  def self.setup_client1
+    client1_cmd = "sudo iodined -f -c -P #{password} #{ip} #{domain}" 
+    deferrable = EventMachine::DeferrableChildProcess.open(client1_cmd)
+
+    # helper.provide_truth "iodined_ip@#{truths[:node_name][:value]}", 
+    #     ip, a_day, true
+    
+    deferrable.errback do
+      # Didn't work to setup the tunnel. What to do?
     end
   end
 end
 
 tactic = TacticHelper.new
 
-# We need the local IP of the machine we are connecting to!
+# This method is called if we want to setup a VPN connetion to a remote system,
+# but also if someone wants to connect to us.
+# - connectable_ip@([[:graph:]]*)
+# - receiving_vpn_tunnel@([[:graph:]]*)
 tactic.when do |helper, truths|
-  unless truths[:node_name][:value] == truths[:domain][:value] then
-    remote_signpost = truths[:domain][:value]
+  helper.log "We are in the OpenVPN tactic. This was requested: #{truths[:what][:value]}"
+  if truths[:resource][:value] == "connectable_ip" then
+    helper.log "We want to setup a VPN connection to #{truths[:domain][:value]}"
 
-    helper.log "Requesting that we need a truth (local_ips and iodined_password)"
-    helper.need_truth "local_ips", {:signpost => remote_signpost}
-    helper.need_truth "iodined_password", {:signpost => remote_signpost}
+    # We need to find a VPN server in our network
+    helper.need_truth "openvpn_server"
+  end
 
+  if truths[:resource][:value] == "receiving_vpn_tunnel" then
+    helper.log "Someone wants to connect to us."
+  end
+
+  helper.recycle_tactic
+end
+
+tactic.when :openvpn_server do |helper, truths|
+  if truths[:openvpn_server][:value] then
+    helper.need_truth "openvpn_server_port", {:domain => truths[:openvpn_server][:domain]}
   else
-    helper.log "We don't want to create a bridge to ourselves"
-    helper.recycle_tactic
-
+    helper.log "Got an OpenVPN server node, but it isn't running..."
   end
 end
 
-tactic.when :local_ips, :iodined_password do |helper, truths|
-  Iodine.start_client helper, truths
+tactic.when :openvpn_server_port do |helper, truths|
+  port = truths[:openvpn_server_port][:value]
+  helper.need_truth "receiving_vpn_tunnel", {
+    :domain => truths[:openvpn_server_port][:domain],
+    :signpost => truths[:what][:domain]
+  }
 end
 
+tactic.when :receiving_vpn_tunnel do |helper, truths|
+  # The remote IP is
+  ip = truths[:receiving_vpn_tunnel][:value]
+  helper.log "Got remote receiving tunnel ip #{ip}"
+end
 
 # We need to initialize the tactic, otherwise nothing will ever happen
 tactic.run

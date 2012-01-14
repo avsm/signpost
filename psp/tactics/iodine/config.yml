@@ -3,5 +3,8 @@ name: iodine
 description: Provides IP over DNS tunnel using iodine
 provides:
   - connectable_ip@([[:graph:]]*)
+requires:
+  - shared_secret-iodine@Local
+  - local_signpost_domain@Local
 executable: tactic.rb
 daemon: daemon.rb

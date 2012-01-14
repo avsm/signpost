@@ -5,31 +5,25 @@ require 'net/dns/resolver'
 require 'lib/tactic_solver/tactic_helper'
 
 module Iodined
-  def self.generate_password
-    o =  [('a'..'z'),('A'..'Z')].map{|i| i.to_a}.flatten
-    (0..50).map{ o[rand(o.length)]  }.join
-    "seb"
+  def self.gen_random_num
+    rand(256)
   end
 
   def self.gen_random_ip
-    "10.#{get_random_num}.#{get_random_num}.1"
-  end
-
-  def self.get_random_num
-    Random.new.rand(256)
+    "10.#{gen_random_num}.#{gen_random_num}.1"
   end
 
   def self.start_server helper, truths
     a_day = 24 * 60 * 60
     ten_minutes = 10 * 60
 
-    password = Iodined::generate_password
+    password = truths[:"shared_secret-iodined"][:value]
     domain = truths[:node_name][:value]
-    ip = get_random_ip
+    ip = gen_random_ip
+    dns_forwarding_port = 5353
 
     # Start the iodined server
-    iodined_cmd = "sudo iodined -f -c -P #{password} #{ip} #{domain}" 
-    helper.log iodined_cmd
+    iodined_cmd = "sudo iodined -f -c -b #{dns_forwarding_port} -P #{password} #{ip} io.#{domain}" 
     deferrable = EventMachine::DeferrableChildProcess.open(iodined_cmd)
 
     helper.provide_truth "iodined_ip@#{truths[:node_name][:value]}", 
@@ -38,9 +32,6 @@ module Iodined
     helper.provide_truth "iodined_running@#{truths[:node_name][:value]}", 
         true, a_day, true
 
-    helper.provide_truth "iodined_password@#{truths[:node_name][:value]}",
-        password, a_day, true
-    
     deferrable.errback do
       helper.log "Couldn't start the IODINED server. Trying again in 10 minutes"
       helper.provide_truth "iodined_running@#{truths[:node_name][:value]}", 
@@ -57,25 +48,29 @@ end
 tactic = TacticHelper.new
 
 # Tactic:
-# - Check if our name is publicly resolvable as an NS record
-# - Check that that name points to us through an A record
+# - Check if we are the main cloud signpost, if so, then there is no iodined
+#   running, so we cannot do any name resolutions. If we are, then start
+#   iodined.
 # - Choose a random IP range to create an Iodined daemon on, and hope it
 #   doesn't clash :)
 # - Setup iodined
 # - Broadcast to the world, that the iodined IP of this machine is X.
 tactic.when do |helper, truths|
-  # We want to check if our name can be resolved as an NS record
-  helper.need_truth "is_nameserver", {:domain => truths[:node_name][:value]}
+  node_name = truths[:node_name][:value]
+  helper.need_truth "local_signpost_domain", {:domain => node_name}
+  helper.need_truth "shared_secret-iodined", {:domain => node_name}
 end
 
-tactic.when :is_nameserver do |helper, truths|
-  return unless truths[:is_nameserver][:signpost] == truths[:node_name][:value]
-
-  if truths[:is_nameserver][:value] then
-    helper.log "Is nameserver, will setup iodined"
+tactic.when :local_signpost_domain, "shared_secret-iodined" do |helper, truths|
+  if truths[:local_signpost_domain][:value] == truths[:node_name][:value] then
+    # We are the cloudy signpost! In otherwords, we really need to run iodined,
+    # otherwise no other machine can access our DNS since it is tunnelling
+    # through iodined
+    helper.log "Powering up IODINED"
     Iodined.start_server helper, truths
+
   else
-    helper.log "Is NOT nameserver, will NOT setup iodined"
+    helper.log "We are not the cloudy nameserver. We therefore do not setup iodined for now"
     a_day = 24 * 60 * 60
     helper.provide_truth "iodined_running@#{truths[:node_name][:value]}", 
         false, a_day, true

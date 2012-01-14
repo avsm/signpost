@@ -3,5 +3,6 @@ name: openvpn
 description: Provides OpenVPN connectivity
 provides:
   - connectable_ip@([[:graph:]]*)
+  - receiving_vpn_tunnel@([[:graph:]]*)
 executable: tactic.rb
 daemon: daemon.rb

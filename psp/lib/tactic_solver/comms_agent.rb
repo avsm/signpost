@@ -313,7 +313,7 @@ module TacticSolver
 
     def find_signpost_from_dns
       options = {
-        :what => "signpost_for_client@#{@_name}", 
+        :what => "signpost_for_client@#{@_domain}", 
         :solver => @_solver.ip_port, 
         :user_info => "SETUP",
         :asker => "SETUP"

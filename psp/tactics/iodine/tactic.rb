@@ -9,17 +9,17 @@ module Iodine
   def self.start_client helper, truths
     ten_minutes = 10 * 60
 
-    password = truths[:iodined_password][:value]
+    password = truths[:shared_secret-iodine][:value]
     domain = truths[:domain][:value]
 
     # Start the iodined server
-    iodine_cmd = "sudo iodine -f -P #{password} i.#{domain}" 
+    iodine_cmd = "sudo iodine -f -P #{password} io.#{domain}" 
     helper.log "Issuing command to connect to iodine daemon on #{domain}: #{iodine_cmd}"
     deferrable = EventMachine::DeferrableChildProcess.open(iodine_cmd)
 
     helper.log "Tunnel setup. Notify client: #{d}"
-    server_ip = truths[:iodined_ip][:value]
-    helper.provide_truth "connectable_ip@#{truths[:domain][:value]}", server_ip, ten_minutes, false
+    # FIXME: Get ip from output
+    helper.provide_truth "connectable_ip@#{truths[:domain][:value]}", "10.0.0.1", ten_minutes, false
 
     # Set the callbacks, so we can handle if the server shuts down.
     deferrable.callback do |d|
@@ -38,33 +38,24 @@ end
 tactic = TacticHelper.new
 
 # We need the local IP of the machine we are connecting to!
-tactic.when do |helper, truths|
-  unless truths[:node_name][:value] == truths[:domain][:value] then
-    remote_signpost = truths[:domain][:value]
-    helper.need_truth "iodined_running", {:domain => remote_signpost}
+tactic.when "shared_secret-iodined", :local_signpost_domain do |helper, truths|
+  unless truths[:node_name][:value] == truths[:local_signpost_domain][:value] then
+    unless truths[:node_name][:value] == truths[:domain][:value] then
+      Iodine.start_client helper, truths
+
+    else
+      helper.log "We don't want to create a bridge to ourselves"
+      helper.recycle_tactic
+
+    end
 
   else
-    helper.log "We don't want to create a bridge to ourselves"
+    # We are the central signpost. We really don't want to setup a connection
+    # to any one using iodined!
     helper.recycle_tactic
 
   end
 end
-
-tactic.when :iodined_running do |helper, truths|
-  if truths[:iodined_running][:value] then
-    remote_signpost = truths[:domain][:value]
-    helper.need_truth "iodined_password", {:signpost => remote_signpost}
-    helper.need_truth "iodined_ip", {:signpost => remote_signpost}
-  else
-    helper.log "IODINED is not running on the remote machine. Cannot setup connection."
-    helper.recycle_tactic
-  end
-end
-
-tactic.when :iodined_password, :iodined_ip do |helper, truths|
-  Iodine.start_client helper, truths
-end
-
 
 # We need to initialize the tactic, otherwise nothing will ever happen
 tactic.run
