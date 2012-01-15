@@ -1,0 +1,10 @@
+#!/bin/bash
+#CONFIG PARAMETERERS
+MAX_ATTEMPTS="100"
+SERVER_DOMAIN=server.d2.signpo.st
+LISTENING_PORT="6650"
+IPERF_INTERVAL="1"
+IPERF_DUTY_CYCLE="5"
+currentIter=1
+echo "SignpostServer on port $LISTENING_PORT"
+iperf -s -p $LISTENING_PORT -i $IPERF_INTERVAL
