@@ -7,22 +7,23 @@ require 'lib/tactic_solver/tactic_helper'
 
 module Iodine
   def self.start_client helper, truths
-    ten_minutes = 10 * 60
+    a_day = 24 * 60 * 60
 
-    password = truths[:shared_secret-iodine][:value]
+    password = truths[:"shared_secret-iodined"][:value]
     domain = truths[:domain][:value]
 
     # Start the iodined server
-    iodine_cmd = "sudo iodine -f -P #{password} io.#{domain}" 
+    iodine_cmd = "sudo iodine -P #{password} i.#{domain}" 
     helper.log "Issuing command to connect to iodine daemon on #{domain}: #{iodine_cmd}"
     deferrable = EventMachine::DeferrableChildProcess.open(iodine_cmd)
 
     helper.log "Tunnel setup. Notify client: #{d}"
     # FIXME: Get ip from output
-    helper.provide_truth "connectable_ip@#{truths[:domain][:value]}", "10.0.0.1", ten_minutes, false
+    # helper.provide_truth truths[:what][:value], "10.0.0.1", a_day, false
 
     # Set the callbacks, so we can handle if the server shuts down.
-    deferrable.callback do |d|
+    deferrable.callback do 
+      helper.log "It says it's complete"
       # TODO: Should we tear down the channel again later?
       # FIXME: This might be called if the connection times out. Then what?
     end
@@ -38,7 +39,7 @@ end
 tactic = TacticHelper.new
 
 # We need the local IP of the machine we are connecting to!
-tactic.when "shared_secret-iodined", :local_signpost_domain do |helper, truths|
+tactic.when :"shared_secret-iodined", :local_signpost_domain do |helper, truths|
   unless truths[:node_name][:value] == truths[:local_signpost_domain][:value] then
     unless truths[:node_name][:value] == truths[:domain][:value] then
       Iodine.start_client helper, truths

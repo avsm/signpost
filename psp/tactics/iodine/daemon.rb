@@ -19,11 +19,13 @@ module Iodined
 
     password = truths[:"shared_secret-iodined"][:value]
     domain = truths[:node_name][:value]
-    ip = gen_random_ip
+    # We use a hardcoded range for now.
+    ip = "10.0.0.1" # gen_random_ip
     dns_forwarding_port = 5353
+    listen_ip = truths[:public_ip][:value]
 
     # Start the iodined server
-    iodined_cmd = "sudo iodined -f -c -b #{dns_forwarding_port} -P #{password} #{ip} io.#{domain}" 
+    iodined_cmd = "sudo iodined -f -c -l #{listen_ip} -b #{dns_forwarding_port} -P #{password} #{ip} i.#{domain}" 
     deferrable = EventMachine::DeferrableChildProcess.open(iodined_cmd)
 
     helper.provide_truth "iodined_ip@#{truths[:node_name][:value]}", 
@@ -59,9 +61,10 @@ tactic.when do |helper, truths|
   node_name = truths[:node_name][:value]
   helper.need_truth "local_signpost_domain", {:domain => node_name}
   helper.need_truth "shared_secret-iodined", {:domain => node_name}
+  helper.need_truth "public_ip", {:domain => node_name}
 end
 
-tactic.when :local_signpost_domain, "shared_secret-iodined" do |helper, truths|
+tactic.when :local_signpost_domain, "shared_secret-iodined", :public_ip do |helper, truths|
   if truths[:local_signpost_domain][:value] == truths[:node_name][:value] then
     # We are the cloudy signpost! In otherwords, we really need to run iodined,
     # otherwise no other machine can access our DNS since it is tunnelling
