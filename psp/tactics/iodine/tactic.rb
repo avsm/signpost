@@ -12,25 +12,17 @@ module Iodine
     password = truths[:"shared_secret-iodined"][:value]
     domain = truths[:domain][:value]
 
+    server_ip = "172.16.0.1" # gen_random_ip
+    helper.provide_truth truths[:what][:value], server_ip, a_day, false
+
     # Start the iodined server
-    iodine_cmd = "sudo iodine -P #{password} i.#{domain}" 
+    iodine_cmd = "sudo iodine -f -P #{password} i.#{domain}" 
     helper.log "Issuing command to connect to iodine daemon on #{domain}: #{iodine_cmd}"
-    deferrable = EventMachine::DeferrableChildProcess.open(iodine_cmd)
 
-    helper.log "Tunnel setup. Notify client: #{d}"
-    # FIXME: Get ip from output
-    # helper.provide_truth truths[:what][:value], "10.0.0.1", a_day, false
-
-    # Set the callbacks, so we can handle if the server shuts down.
-    deferrable.callback do 
-      helper.log "It says it's complete"
-      # TODO: Should we tear down the channel again later?
-      # FIXME: This might be called if the connection times out. Then what?
-    end
-
-    deferrable.errback do
-      helper.log "Tunnel setup failed. Do something"
-    end
+    # deferrable = EventMachine::DeferrableChildProcess.open(iodine_cmd)
+    # deferrable.errback do
+    #   helper.log "Tunnel setup failed. Do something"
+    # end
 
     helper.recycle_tactic
   end
