@@ -12,6 +12,8 @@ function usage {
   exit 1
 }
 
+VERSION=`iodine -v`
+
 DOMAIN=i.d2.signpo.st
 while getopts "n:" opt; do
   case $opt in
