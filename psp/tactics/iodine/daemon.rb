@@ -20,7 +20,7 @@ module Iodined
     password = truths[:"shared_secret-iodined"][:value]
     domain = truths[:node_name][:value]
     # We use a hardcoded range for now.
-    ip = "10.0.0.1" # gen_random_ip
+    ip = "172.16.0.1" # gen_random_ip
     dns_forwarding_port = 5353
     listen_ip = truths[:public_ip][:value]
 
