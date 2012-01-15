@@ -26,10 +26,10 @@ type cap =
 
 type port = int 
 
+(* TODO better categorisation needed (wildcard matches, etc) *)
 type service =
   | HTTP
-  | IPSec
-  | IP
+  | IP (* of security option *)
   | TCP of port
   | UDP of port
   | Null
@@ -47,23 +47,29 @@ type node = {
 }
 
 type mode =
-  | Active of mode Lwt.t       (* Flow is active *)
+  | Active of unit Lwt.t       (* Flow is active *)
   | Failed of string           (* Flow permanently failed *)
   | Starting of mode Lwt.t     (* Flow is starting and will eventually either be active or failed *)
   | Stopped                    (* Flow is inactive *)
 and entry = {
   id: int;                     (* Unique id for referring to this entry *)
   service: service;            (* Protocol method *)
-  dest: node;                  (* Destination node *)
   distance: int;               (* Distance vector *)
   mutable mode: mode;          (* State of the flow entry *)
   mutable depends: entry list; (* Other flow entries that depend on this on *)
 }
 
+let make_entry_id =
+  let id = ref 0 in
+  fun () -> incr id; !id
+
+let make_entry ?(distance=1) ~service ~mode ~depends =
+  let id = make_entry_id () in
+  { id; service; distance; mode; depends}
+
 let service_to_string =
   function
   | HTTP -> "HTTP"
-  | IPSec -> "IPSec"
   | IP -> "IP"
   | TCP port -> Printf.sprintf "TCP:%d" port
   | UDP port -> Printf.sprintf "UDP:%d" port
@@ -77,8 +83,8 @@ let mode_to_string =
   | Stopped -> "stopped"
 
 let entry_to_string e =
-  Printf.sprintf "%d: %s %s %d %s [%s]" e.id (service_to_string e.service)
-    e.dest.name e.distance (mode_to_string e.mode)
+  Printf.sprintf "%d: %s %d %s [%s]" e.id (service_to_string e.service)
+    e.distance (mode_to_string e.mode)
     (String.concat "," (List.map (fun e -> string_of_int e.id) e.depends))
 
 let make_node ?(cap=Enabled) ~name =
@@ -103,6 +109,5 @@ end
 module FlowEntry = struct
   type t = entry
   let compare x y = y.id - x.id
-  let default = { id=(-1); service=Null; dest={name="?";cap=Dumb};
-    distance=0; mode=Failed ""; depends=[]}
+  let default = { id=(-1); service=Null; distance=0; mode=Failed ""; depends=[]}
 end 

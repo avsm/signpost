@@ -24,3 +24,6 @@
 <*.ml{,i}>: pkg_froc
 <frost.{native,byte}>: custom
 # OASIS_STOP
+<*.ml{,i}>: syntax_camlp4o
+<*.ml{,i}>: pkg_lwt.syntax
+true: annot
