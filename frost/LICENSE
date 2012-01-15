@@ -13,22 +13,3 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
-
-(**
-  * A tactic sets up a single, uni-directional point-to-point link.
-  * Every tactic has an entry in the Node forwarding table, where its
-  * state is maintained.
-  *)
-
-type src_port = int
-type dst_port = int
-
-type openvpn_state = unit (* TODO *)
-type ipsec_state = unit (* TODO *)
-type tactic =
-  | TCP_connect of dst_port
-  | UDP_ping of src_port * dst_port
-  | OpenVPN of openvpn_state
-  | IPSec of ipsec_state
-  | Always_fail (* for testing *)
-

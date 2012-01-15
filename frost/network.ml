@@ -14,52 +14,20 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-(**
-  * A Signpost network has a set of nodes, each with unidirectional links pointing
-  * to other nodes. The process of establishing, maintaining and expiring links is
-  * handled via a push-based FRP framework.
-  **)
-
-type cap = 
-  | Enabled  (* Full signpost service present *)
-  | Dumb     (* Device cannot be sent instructions *)
-
-type node = {
-  name: string;
-  cap: cap;
-  (* And any other metadata in the future goes here, such as the history of the
-   * node for provenance information and debugging *)
-}
-
-let make_node ?(cap=Enabled) ~name =
-  { name; cap }
-
 open Graph
-
-(**
-  * The OrderedNode module makes the node type into a COMPARABLE, with the
-  * nodes ordered by its physical address, so name strings can be duplicates if
-  * desired.
-  *)
-module OrderedNode = struct
-  type t = node
-  let compare (x:t) (y:t) = compare x y
-  let hash (x:t) = Hashtbl.hash x.name
-  let equal (x:t) (y:t) = x == y
-end
 
 (**
   * The graph structure is an imperative unidirectional labelled graph,
   * with each node being an OrderedNode wrapper, and an edge representing
   * a single tactic. Multiple tactics are represented by multiple edges.
   *)
-module G = Imperative.Digraph.ConcreteLabeled(OrderedNode)(Tactic)
+module G = Imperative.Digraph.ConcreteLabeled(Node.Ordered)(Node.FlowEntry)
 
 (* Retrieve a network node by its name.
  * TODO: folding over the graph can be optimised
  *)
 let find_node ~name g =
-  G.fold_vertex (fun b a -> if b.name = name then Some b else a) g None
+  G.fold_vertex (fun b a -> if b.Node.name = name then Some b else a) g None
 
 (**
   * Extend the graph functor with enough to output a DOT graph of the
@@ -67,12 +35,13 @@ let find_node ~name g =
   *)
 module Display = struct
   include G
-  let vertex_name v = "\"" ^ String.escaped (V.label v).name ^ "\""
+  let vertex_name v = "\"" ^ String.escaped (Node.node_to_string (V.label v)) ^ "\""
   let graph_attributes _ = []
   let default_vertex_attributes _ = []
   let vertex_attributes _ = []
   let default_edge_attributes _ = []
-  let edge_attributes e = [`Label (Tactic.to_string (E.label e)) ]
+  let edge_attributes e = [`Label (Node.entry_to_string (E.label e)) ]
   let get_subgraph _ = None
 end
 module DotOutput = Graphviz.Dot(Display)
+

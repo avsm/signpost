@@ -14,26 +14,24 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-open Froc
-
 let test () =
   let g = Network.G.create () in
   (* Make some devices *)
-  let cloud = Network.(make_node ~cap:Enabled ~name:"EC2") in
-  let nat = Network.(make_node ~cap:Enabled ~name:"HomeNAT") in
-  let iphone_3g = Network.(make_node ~cap:Dumb ~name:"iPhone3G") in
-  let iphone_wifi = Network.(make_node ~cap:Dumb ~name:"iPhoneWifi") in
-  let android_3g = Network.(make_node ~cap:Enabled ~name:"Android3G") in
-  let android_wifi = Network.(make_node ~cap:Enabled ~name:"AndroidWifi") in
-  let laptop = Network.(make_node ~cap:Enabled ~name:"Laptop") in
+  let cloud = Node.(make_node ~cap:Enabled ~name:"EC2") in
+  let nat = Node.(make_node ~cap:Enabled ~name:"HomeNAT") in
+  let iphone_3g = Node.(make_node ~cap:Dumb ~name:"iPhone3G") in
+  let iphone_wifi = Node.(make_node ~cap:Dumb ~name:"iPhoneWifi") in
+  let android_3g = Node.(make_node ~cap:Enabled ~name:"Android3G") in
+  let android_wifi = Node.(make_node ~cap:Enabled ~name:"AndroidWifi") in
+  let laptop = Node.(make_node ~cap:Enabled ~name:"Laptop") in
   (* And some connections between the devices *)
   let edges = Tactic.([
-    nat, cloud, TCP;
-    iphone_3g, cloud, OpenVPN;
-    iphone_wifi, nat, TCP;
-    android_3g, cloud, OpenVPN;
-    android_wifi, nat, TCP;
-    laptop, nat, SSL;
+    nat, cloud, TCP_connect 80;
+    iphone_3g, cloud, OpenVPN ();
+    iphone_wifi, nat, TCP_connect 80;
+    android_3g, cloud, OpenVPN ();
+    android_wifi, nat, UDP_ping (53,53);
+    laptop, nat, Always_fail;
   ]) in
   (* Populate the graph *)
   List.iter (Network.G.add_vertex g)
@@ -49,4 +47,19 @@ let test () =
   close_out oc;
   g
 
+(**
+  * The evaluation loop for the network should be: 
+
+  *  - Request for A to connect B results in a calculation that pull in
+  *    FROC behaviours when evaluating possible tactics. If any of these
+  *    behaviours change in the future, it will trigger a recalculation of
+  *    those tactics.
+  *
+  *  - When a node joins or leaves, this may also trigger a recalculation.
+  *
+  *  - Each tactic is an edge in the network, and has its own independent
+  *    thread, and when it changes state, can also trigger a recalculation.
+  *
+  *  So, we have a graph of nodes/edges, and the main FRP
+  *)
 let _ = test ()

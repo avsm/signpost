@@ -13,4 +13,4 @@ Executable frost
   Custom:             true
   CompiledObject:     best
   Install:            false
-  BuildDepends:       froc,lwt.syntax,lwt.unix,ocamlgraph
+  BuildDepends:       lwt.syntax,lwt.unix,ocamlgraph
