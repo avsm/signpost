@@ -1,0 +1,16 @@
+OASISFormat: 0.2
+Name:        frost
+Version:     0.1-dev
+Synopsis:    FRP tactics engine
+Authors:     Anil Madhavapeddy
+License:     LGPL-2.0 with OCaml linking exception
+Plugins:     META (0.2)
+BuildTools:  ocamlbuild
+
+Executable frost
+  Path:               .
+  MainIs:             frost.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       lwt.syntax,lwt.unix,ocamlgraph

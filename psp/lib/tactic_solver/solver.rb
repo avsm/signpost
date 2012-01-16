@@ -233,6 +233,12 @@ module TacticSolver
            "GLOBAL", 
            @_name,
            "http://localhost:8080/requests",
+           create_ttl_state(1_000_000)],
+          ["local_signpost_domain@#{@_name}", 
+           "global_truth",
+           "GLOBAL", 
+           @_name,
+           @_config.signpost_domain,
            create_ttl_state(1_000_000)]
         ]
       }

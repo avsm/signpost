@@ -3,5 +3,5 @@ description: Provides shared secrets within a signpost domain
 provides:
   - shared_secret-([[:graph:]]*)@Local
 requires:
-  - signpost_for_client@Local
+  - local_signpost_domain@Local
 executable: secrecy.rb

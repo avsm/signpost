@@ -9,8 +9,8 @@ require 'lib/tactic_solver/tactic_helper'
 
 tactic = TacticHelper.new
 
-tactic.when :signpost_for_client do |helper, truths|
-  signpost_domain = truths[:signpost_for_client][:value]
+tactic.when :local_signpost_domain do |helper, truths|
+  signpost_domain = truths[:local_signpost_domain][:value]
   truths[:resource][:value] =~ /shared_secret-([[:graph:]]*)/
   service = $1
   helper.log "Generating shared secret for #{service}"

@@ -106,7 +106,7 @@ module TacticSolver
       @_logger = logger
 
       setup_comms_server
-      find_signpost_from_dns
+      find_signpost_from_dns unless config.signpost_domain == config.signpost_client
     end
 
     # --------------------------------------------------
@@ -313,7 +313,7 @@ module TacticSolver
 
     def find_signpost_from_dns
       options = {
-        :what => "signpost_for_client@#{@_name}", 
+        :what => "signpost_for_client@#{@_domain}", 
         :solver => @_solver.ip_port, 
         :user_info => "SETUP",
         :asker => "SETUP"
@@ -326,7 +326,7 @@ module TacticSolver
           connect_to_signpost domain, port
 
         else
-          raise "Cannot find a signpost to connect to for #{@_domain}. Please ensure the DNS is setup correctly."
+          raise "cannot find a signpost to connect to for #{@_domain}. please ensure the dns is setup correctly."
         end
       end
     end
@@ -334,10 +334,24 @@ module TacticSolver
     def connect_to_signpost domain, port = 8987
       # We don't want to connect to ourselves
       unless domain == @_name then
-        # TODO: Use tactic solver to get a connectable ip, or tunnel or whatever.
-        puts "TODO: Use tactic solver to find a way to connect to #{domain}:#{port}"
-        puts "Connecting to #{domain}:#{port}"
-        EventMachine::connect(domain, port, CommsChannelClient, self)
+        options = {
+          :what => "connectable_ip@#{@_domain}", 
+          :solver => @_solver.ip_port, 
+          :user_info => "SETUP",
+          :asker => "SETUP"
+        }
+        Question.new options do |res|
+          # Use the first signpost we get, and try connecting to it
+          truths = res.to_a
+          if truths.size > 0 then
+            ip = truths.first[4]
+            EventMachine::connect(ip, port, CommsChannelClient, self)
+
+          else
+            raise "Couldn't connect to the signpost through whatever means"
+
+          end
+        end
       end
     end
   end

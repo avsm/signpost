@@ -5,6 +5,18 @@ psp/log
 psp/config.yml
 
 #################################################
+#               FROST                           #
+#################################################
+frost/_build/
+frost/*.bak
+frost/*.log
+frost/*.byte
+frost/*.native
+frost/*.dot
+frost/setup.bin
+frost/setup.data
+
+#################################################
 #               Vim                             #
 #################################################
 *.swp

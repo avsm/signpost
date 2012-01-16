@@ -1,0 +1,6 @@
+name: direct_connection
+description: Checks if it is possible to make a direct connection
+provides:
+  - incoming_connection@Local:(\d*)
+  - direct_connection@([[:graph:]]*)
+executable: dc.rb

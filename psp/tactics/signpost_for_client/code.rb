@@ -7,20 +7,15 @@ require 'lib/tactic_solver/tactic_helper'
 
 module SignpostFinder
   def self.resolve domain, helper
-    helper.log "Looking up domain: #{domain}"
-
     resolver = Net::DNS::Resolver.new
     req_str = "_signpost._tcp.#{domain.join(".")}"
-    # packet = Net::DNS::Packet.new(req_str, Net::DNS::SRV)
 
     answers = []
-    # resolver.send(packet, Net::DNS::SRV).answer.each do |rr|
     resolver.send(req_str, Net::DNS::SRV).answer.each do |rr|
-      helper.log "rr.class #{rr.class}"
-
       if rr.class == Net::DNS::RR::SRV then
         # We got an SRV packet, hopefully :)
         host = rr.host
+
         # Remove trailing 'dot' if present
         host_array = host.split("")
         host = host_array[0...(host_array.size-1)].join("") if host_array.last == "."
