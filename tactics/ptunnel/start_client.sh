@@ -2,7 +2,7 @@
 
 # Start ptunnel client
 
-PROXY = $1
+PROXY=$1
 PORT=5000
 HOST="127.0.0.1"
 PASSWORD="ptunnel_eval_password"
