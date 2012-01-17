@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Start iodined server
+
+# Start iodined client
 DOMAIN=i.d2.signpo.st
 
 echo
