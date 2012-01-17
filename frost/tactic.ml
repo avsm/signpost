@@ -16,71 +16,67 @@
 
 (**
   * A tactic sets up a single, uni-directional point-to-point link.
+  * Every tactic has an entry in the Node forwarding table, where its
+  * state is maintained.
   *)
 
-(**
-  * The type of a tactic represents how it performs its route setup. For now,
-  * we just maintain a static list here, although this will eventually be 
-  * more dynamic.
-  **)
-type ty =
-  | Null (* always fails *)
-  | TCP
-  | SSL
-  | OpenVPN
-  | SSH
-  | Iodine
-  | Ping (* icmp "existence test" *)
+open Lwt
 
-(**
-  * A tactic instance is represented by an Lwt thread and a state indicating if
-  * it is currently active or not (or being established)
-  **)
-type mode =
-  | Off
-  | Starting of mode Lwt.t
-  | Established of mode Lwt.t
-  | Stopping of mode Lwt.t
+type src_port = int
+type dst_port = int
 
-(**
-  * Overall state descriptor for a tactic instance.
-  **)
-type t = {
-  mutable mode: mode;
-  ty: ty;
-}
+type openvpn_state = unit (* TODO *)
+type ipsec_state = unit (* TODO *)
+type tactic =
+  | TCP_connect of dst_port
+  | Always_fail (* for testing *)
+(*
+  | UDP_ping of src_port * dst_port
+  | OpenVPN of openvpn_state
+  | IPSec of ipsec_state
+*)
 
-(**
-  * Helper function to construct a tactic value
-  **)
-let make_tactic ?(mode=Off) ty =
-  {mode; ty }
+ 
+(* Attempt a TCP connect out to dst:port *) 
+module TCP_connect = struct
 
-(**
-  * Convert a tactic state to a human-readable string
-  **)
-let to_string t =
-  Printf.sprintf "{ %s (%s) }"
-    (match t.ty with
-      |TCP -> "TCP" 
-      |SSL -> "SSL"
-      |OpenVPN -> "OpenVPN" 
-      |SSH -> "SSH"
-      |Iodine -> "Iodine"
-      |Null -> "Null"
-      |Ping -> "Ping"
-    )
-    (match t.mode with
-     |Off -> "Off"
-     |Starting _ -> "Starting"
-     |Established _ -> "Established"
-     |Stopping _ -> "Stopping"
-    )
+  (* Right now, it just always connects after some pausing, and regularly
+     outputs to the console *) 
+  let start ~src ~dst ~port = 
+    let th = 
+      Printf.printf "TCP_connect: starting %s -> %s:%d\n%!" src dst port;
+      lwt () = Lwt_unix.sleep 3.0 in
+      let t,_ = Lwt.task () in
+      let cont = ref true in
+      Lwt.on_cancel t (fun () -> cont := false);
+      let ping_t =
+        while_lwt !cont do
+          Printf.printf "TCP_connect: %s -> %s:%d OK\n%!" src dst port;
+          Lwt_unix.sleep 5.0
+        done
+      in
+      return (Node.Active ping_t)
+    in
+    Node.TCP port, th
+end
 
-(* This is required to satisfy the COMPARABLE functor *)
-let compare =
-  Pervasives.compare
+(* Tactic that always fails for debugging *)
+module Always_fail = struct
+  let start ~src ~dst =
+    let th = 
+      lwt () = Lwt_unix.sleep 2.0 in
+      return (Node.Failed "always_fail")
+    in
+    Node.Null, th
+end
 
-(* This is required to satisfy the ORDERED_TYPE_DFT functor *)
-let default =
-  { mode=Off; ty=Null }
+let start_tactic ~src ~dst ~tactic =
+  let service, th =
+    match tactic with
+    | TCP_connect port -> TCP_connect.start ~src ~dst ~port
+    | Always_fail -> Always_fail.start ~src ~dst
+  in
+  let mode = Node.Starting th in
+  let depends = [] in (* eventually an FRP dependency for recalculation *)
+  Node.make_entry ~service ~mode ~depends
+

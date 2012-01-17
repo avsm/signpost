@@ -40,19 +40,23 @@ def capture_packets( intf, directory):
     while running:
         try:
             data = rdr.next()
-            print "packet captured"
+#            print "packet captured"
             dmp.dump(data[0], data[1])
         except socket.timeout:
             continue
 
 def run_test(ns, measurement_id, test_opt):
     # define the folder name to store the results
-    measurement_id_str = "%s/%s-%s-%ld"%(test_opt["data_dir"], 
-            measurement_id["ns"], measurement_id["dst_mac"].replace(":", ""), 
-            long(time.time()))
+#    measurement_id_str = "%s/%s-%s-%ld"%(test_opt["data_dir"], 
+#            measurement_id["ns"], measurement_id["dst_mac"].replace(":", ""), 
+#            long(time.time()))
+    measurement_id_str = "%s/%s-%s"%(test_opt["data_dir"], 
+            measurement_id["ns"], measurement_id["dst_mac"].replace(":", "")
+        )
     if(measurement_id["is_wireless"]):
         measurement_id_str += measurement_id["essid"]    
     print measurement_id_str
+    test_opt["output_dir"] = measurement_id_str
 
     # create folder to store experiment results
     try:

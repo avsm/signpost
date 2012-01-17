@@ -1,0 +1,10 @@
+Private-key-format: v1.2
+Algorithm: 3 (DSA)
+Prime(p): zFRSXTz7kQRT7XraDZBGOoPYf0l4kGg9Du5bqxZaeftkrpF//E+8ylGwOCu+H5FzL8VAHrjBRFhqJHq6zWOLuw==
+Subprime(q): uOMegD/fWV1YpPssndykN/XRfBM=
+Base(g): Q9k/MWtvKbWxTvhfG2f6HFOBuRm2CGKZy/j09KzV+lHEScq61qASVMhCNrXMsBSKZY/CZTngokslXNtibIUN8w==
+Private_value(x): h8KR4zNc3sVe9BNvSRFQoCIS6Ag=
+Public_value(y): hn8upeRfNyMRqtO0vfUn3IotvCaBjdlIUScMulBFf+jmPZWkOUT9esOWNPQc+rhKTuKxKv0nXiUrcVpmMtHIBw==
+Created: 20111125234143
+Publish: 20111125234143
+Activate: 20111125234143

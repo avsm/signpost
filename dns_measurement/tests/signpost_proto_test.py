@@ -3,7 +3,7 @@
 import ldns
 import logging
 
-def run_test(resolver, logger):
+def run_test(resolver, logger, test_opt):
     # create dns packet
     resolver.set_dnssec(True)
     res = resolver.prepare_query_pkt(""+test_opt["domain"], ldns.LDNS_RR_TYPE_SOA,
@@ -22,8 +22,9 @@ def run_test(resolver, logger):
             ldns.ldns_rr.new_frm_str("st 3600 IN TXT hello_world!!!") )
 
     #generate new DSA key
-    ldns.ldns_init_random(open("/dev/random","rb"), 512/8)
-    key = ldns.ldns_key.new_frm_algorithm(ldns.LDNS_SIGN_DSA, 512)
+
+    key = ldns.ldns_key.new_frm_fp(open("Ksp.+003+03490.private"))
+    print key.key_to_rr()
     pkt.push_rr(ldns.LDNS_SECTION_ADDITIONAL,
             key.key_to_rr())
     logger.warn(pkt)
