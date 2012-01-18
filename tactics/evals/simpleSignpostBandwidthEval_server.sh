@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 #CONFIG PARAMETERERS
 function usage {
   #TODO
