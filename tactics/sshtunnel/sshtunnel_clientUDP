@@ -2,8 +2,7 @@ o "Forwards TCP traffic through ssh"
 echo "arg1 -> Key to be used"
 echo "arg2 -> user"
 echo "arg3 -> Global IP address for ssh server"
-echo "arg4 -> Local port listener"
 #open ssh
-sudo ssh -f -i $1 $2@$3 -L $4:$3:5003 -N
+#sudo ssh -f -i $1 $2@$3 -L 5002:$3:5002 -N
 sudo mkfifo /tmp/fifo
-sudo nc -l -u -p 5001 < /tmp/fifo | nc localhost $4 > /tmp/fifo
+sudo nc -l -u -p 5001 < /tmp/fifo | nc localhost 5002 > /tmp/fifo
