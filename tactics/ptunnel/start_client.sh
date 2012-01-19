@@ -8,7 +8,7 @@ echo
 PROXY=$1
 INTERFACE=$2
 PORT=5000
-HOST="127.0.0.1"
+HOST="localhost"
 PASSWORD="ptunnel_eval_password"
 
 echo
@@ -16,7 +16,8 @@ echo "****************"
 echo "Connecting to $PROXY"
 echo "Local port $PORT is relaying to $HOST:$PORT"
 echo "Packet capture on device $INTERFACE"
-echo "Using password: $PASSWORD"
+echo "Using ptunnel password: $PASSWORD"
+echo "It might request you to type in your 'sudo' password next"
 echo "****************"
 echo
-sudo ptunnel -c $INTERFACE -p $PROXY -lp $PORT -da $HOST -dp $PORT -x $PASSWORD
+sudo ptunnel -c $INTERFACE -v 10 -p $PROXY -lp $PORT -da $HOST -dp $PORT -x $PASSWORD

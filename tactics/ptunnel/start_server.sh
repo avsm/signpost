@@ -12,7 +12,8 @@ echo
 echo "****************"
 echo "Starting ptunnel."
 echo "Capturing packets on $INTERFACE"
-echo "Password is: $PASSWORD"
+echo "ptunnel password is: $PASSWORD"
+echo "It might request you to type in your 'sudo' password next"
 echo "****************"
 echo
 echo
