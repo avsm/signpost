@@ -1,0 +1,34 @@
+# Tests are run N minutes past the hour and N minutes
+# past X:30. So OpenVPN set to run at time: 4 will be
+# executed at 12:04, 12:34, 13:04, :13:34, etc.
+tunnels:
+  - name: iodine
+    time: 0
+    ip: 10.0.0.1
+    port: 5000
+    interface: eth0
+  - name: OpenVPN
+    time: 4
+    ip: 10.1.1.1
+    port: 5000
+    interface: eth0
+  - name: httptunnel
+    time: 12
+    ip: 10.1.1.1
+    port: 5000
+    interface: eth0
+  - name: ipsec
+    time: 16
+    ip: 10.1.1.1
+    port: 5000
+    interface: eth0
+  - name: tcpcrypt
+    time: 20
+    ip: 10.1.1.1
+    port: 5000
+    interface: eth0
+  - name: sshtunnel
+    time: 24
+    ip: 10.1.1.1
+    port: 5000
+    interface: eth0
