@@ -4,5 +4,7 @@ echo "arg2 -> user"
 echo "arg3 -> Global IP address for ssh server"
 #open ssh
 #sudo ssh -f -i $1 $2@$3 -L 5002:$3:5002 -N
-sudo mkfifo /tmp/fifo
-sudo nc -l -u -p 5001 < /tmp/fifo | nc localhost 5002 > /tmp/fifo
+mkfifo /tmp/fifo
+nc -l -u -p 5001 < /tmp/fifo | nc localhost 5002 > /tmp/fifo
+
+
