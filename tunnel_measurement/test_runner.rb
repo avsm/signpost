@@ -14,10 +14,13 @@ require 'pp'
 # - HTTP
 
 module Test
-  def self.get_channels
+  def self.get_conf
     config_file = "config.yml"
     raise "Missing test configuration file" unless File.exist? config_file
-    config = YAML::load(File.open(config_file))
+    YAML::load(File.open(config_file))
+  end
+
+  def self.get_channels config
     tunnels = config["tunnels"]
     channels = []
     tunnels.each do |tunnel|
@@ -63,10 +66,13 @@ module Test
   end
 end
 
-channels = Test.get_channels
+config = Test.get_conf
+channels = Test.get_channels config
+log_dir = config["log_dir"]
+pttcp_dir = config["ptccp_dir"]
 
 while true
   test = Test.next_test channels
   # Run the different tests
-  # Insert execution of scripts that are needed here...
+  `./iperf_test.sh #{test[:name]} #{Time.now.to_i} #{test[:interface]} #{test[:ip]} #{test[:port]} #{log_dir} #{ptccp_dir}`
 end

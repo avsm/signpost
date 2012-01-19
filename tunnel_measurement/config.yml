@@ -1,4 +1,6 @@
 # Tests are run N minutes past the hour
+log_dir: logs
+ptccp_dir: ptccp
 tunnels:
   - name: iodine
     time: 0
