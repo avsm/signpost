@@ -1,0 +1,9 @@
+echo "Forwards TCP traffic through ssh"
+echo "arg1 -> Key to be used"
+echo "arg2 -> user"
+echo "arg3 -> Global IP address for ssh server"
+sudo ssh -f -i $1 $2@$3 -L 5001:$3:5001 -N
+
+
+
+
