@@ -28,6 +28,7 @@ module Test
         :name => tunnel["name"],
         :ip => tunnel["ip"],
         :port => tunnel["port"],
+        :base_port => tunnel["base_port"],
         :time => tunnel["time"],
         :interface => tunnel["interface"]
       }
@@ -38,6 +39,7 @@ module Test
   end
 
   def self.seconds_to_sleep c, next_hour = false
+    
     t = Time.now
     time_now = Time.utc(t.year, t.month, t.day, t.hour, t.min, t.sec).to_i
     execute_at = Time.utc(t.year, t.month, t.day, 
@@ -74,5 +76,6 @@ pttcp_dir = config["ptccp_dir"]
 while true
   test = Test.next_test channels
   # Run the different tests
-  `./iperf_test.sh #{test[:name]} #{Time.now.to_i} #{test[:interface]} #{test[:ip]} #{test[:port]} #{log_dir} #{ptccp_dir}`
+  puts  "./iperf_test.sh #{test[:name]} #{Time.now.to_i} #{test[:interface]} #{test[:ip]} #{test[:port]} #{test[:base_port]} #{log_dir} #{pttcp_dir}"
+  `./iperf_test.sh #{test[:name]} #{Time.now.to_i} #{test[:interface]} #{test[:ip]} #{test[:port]} #{test[:base_port]} #{log_dir} #{pttcp_dir}`
 end
