@@ -1,29 +1,29 @@
 # Tests are run N minutes past the hour
-log_dir: /anfs/nos2/cr409/signpost_data/lab-lab-eth/
+log_dir: /anfs/nos2/cr409/signpost_data/lab-home-eth/
 ptccp_dir: /root/signpost/tunnel_measurement/pttcp/
 tunnels:
   - name: direct
     time: 0
-    ip: chicane 
+    ip: 86.30.244.59
     port: 5001
-    base_port: 6000
+    base_port: 7000
     interface: eth4
   - name: iodine
     time: 10
     ip: 10.0.0.1
     port: 5001
-    base_port: 6000
+    base_port: 7000
     interface: dns0
   - name: OpenVPN
     time: 20
     ip: 10.8.1.1
     port: 5001
-    base_port: 6000
+    base_port: 7000
     interface: tun0
   - name: sshtunnel
     time: 30
     ip: localhost
     port: 6001
-    base_port: 7001
+    base_port: 8000
     interface: eth4
 
