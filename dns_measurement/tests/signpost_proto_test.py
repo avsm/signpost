@@ -24,7 +24,6 @@ def run_test(resolver, logger, test_opt):
     #generate new DSA key
 
     key = ldns.ldns_key.new_frm_fp(open("Ksp.+003+03490.private"))
-    print key.key_to_rr()
     pkt.push_rr(ldns.LDNS_SECTION_ADDITIONAL,
             key.key_to_rr())
     logger.warn(pkt)

@@ -3,9 +3,10 @@
 from routing import SP_routing
 import dns_test
 
+import os
 import ldns
 import sys
-
+import glob
 import getopt
 
 test_opt = dict(nameserver = [], data_dir = "./",
@@ -44,7 +45,6 @@ else:
 
 # load routing information in order to know which device we need to
 # monitor.
-rt = SP_routing()
 
 if len(test_opt["nameserver"]) == 0:
     print """No nameservers define, loading default nameserver from
@@ -56,5 +56,5 @@ if len(test_opt["nameserver"]) == 0:
         test_opt["nameserver"].append(str(ns))
 
 for ns in test_opt["nameserver"]:
-    print "%s %s %s"%(ns, rt.get_gw_for_ip(str(ns)), rt.get_intf_for_ip(str(ns)))
-    dns_test.run_test(str(ns),rt.get_intf_details(str(ns)), test_opt)
+    print "%s"%(ns)
+    dns_test.run_test(str(ns),str(ns), test_opt)

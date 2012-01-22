@@ -71,11 +71,11 @@ def run_test(resolver, logger, test_opt):
     
     keys = pkt.rr_list_by_type(ldns.LDNS_RR_TYPE_DNSKEY, 
            ldns.LDNS_SECTION_ANSWER)
-    
-    while keys.rr_count() > 0:
-        rr = keys.pop_rr()
-        print rr
-        resolver.push_dnssec_anchor(rr)
+    if keys :
+      while keys.rr_count() > 0:
+          rr = keys.pop_rr()
+          print rr
+          resolver.push_dnssec_anchor(rr)
 
     for checking in [True, False]:
       simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_SOA,
