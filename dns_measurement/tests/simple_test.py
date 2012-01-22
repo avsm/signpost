@@ -43,3 +43,4 @@ def run_test(resolver, logger, test_opt):
     simple_lookup(resolver, logger, "andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_HINFO)
     simple_lookup(resolver, logger, "andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_LOC)
     simple_lookup(resolver, logger, "andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_APL)
+    simple_lookup(resolver, logger, "nonexisting."+test_opt["domain"], ldns.LDNS_RR_TYPE_A)

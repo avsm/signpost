@@ -11,7 +11,7 @@ import getopt
 test_opt = dict(nameserver = [], data_dir = "./",
         tests = [], domain = "d3.signpo.st.")
 
-optlist, args = getopt.getopt(sys.argv[1:], 'n:o:d:')
+optlist, args = getopt.getopt(sys.argv[1:], 'n:o:d:h')
 
 for opt in optlist:
     if opt[0] == "-n":
@@ -21,8 +21,11 @@ for opt in optlist:
         test_opt["data_dir"] = opt[1] + "/"
     elif opt[0] == "-d":
         test_opt["domain"] = opt[1]
+    elif opt[0] == "-h":
+      print """usage: ./dns_measure.py [-n nameserver_ip] [-o output_dir] [-d domain] [test_file]"""
+      sys.exit(1)
     else:
-        print "unrecognised parameter %s"%(opt[0])
+            print "unrecognised parameter %s"%(opt[0])
 
 # define which test we will run
 if len(args) > 0:
