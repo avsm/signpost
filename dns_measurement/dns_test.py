@@ -33,7 +33,8 @@ def load_test(resolver, logger, test_opt):
 
 def capture_packets(intf, directory):
     # listen on all devices
-    rdr = pcapy.open_live("any", 2500, 1, 1000)
+    print "listening on device %s"% intf
+    rdr = pcapy.open_live(intf, 2500, 1, 1000)
 
     # save file name 
     dmp = rdr.dump_open(directory+"/trace.pcap")
@@ -80,7 +81,7 @@ def run_test(ns, measurement_id, test_opt):
     th1 = threading.Thread(target = load_test, args = (resolver, logger,
         test_opt))
     th2 = threading.Thread(target = capture_packets, 
-            args = ("", measurement_id_str))
+            args = (test_opt["intf"], measurement_id_str))
 
     # ugly hack to make the threads communicate ans signal the end of the tests
     global running

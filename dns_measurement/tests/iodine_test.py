@@ -11,7 +11,6 @@ def run_test(resolver, logger, test_opt):
     # create dns packet
 
     ns = resolver.pop_nameserver()
-    print ns
     out_file = open("%s/iodine.log"%(test_opt["output_dir"]), "w")
 #    res = system("/usr/sbin/iodine -P foo %s test.%s"%(ns, test_opt["domain"]))
     iodine_res = subprocess.call(["/usr/sbin/iodine", "-r", "-P","foo", str(ns),

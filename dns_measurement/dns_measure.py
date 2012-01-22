@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from routing import SP_routing
 import dns_test
 
 import os
@@ -10,9 +9,9 @@ import glob
 import getopt
 
 test_opt = dict(nameserver = [], data_dir = "./",
-        tests = [], domain = "d3.signpo.st.")
+        tests = [], domain = "d3.signpo.st.", intf = "any")
 
-optlist, args = getopt.getopt(sys.argv[1:], 'n:o:d:h')
+optlist, args = getopt.getopt(sys.argv[1:], 'n:o:d:i:h')
 
 for opt in optlist:
     if opt[0] == "-n":
@@ -22,8 +21,10 @@ for opt in optlist:
         test_opt["data_dir"] = opt[1] + "/"
     elif opt[0] == "-d":
         test_opt["domain"] = opt[1]
+    elif opt[0] == "-i":
+        test_opt["intf"] = opt[1]
     elif opt[0] == "-h":
-      print """usage: ./dns_measure.py [-n nameserver_ip] [-o output_dir] [-d domain] [test_file]"""
+      print """usage: ./dns_measure.py [-n nameserver_ip] [-i intf] [-o output_dir] [-d domain] [test_file]"""
       sys.exit(1)
     else:
             print "unrecognised parameter %s"%(opt[0])
