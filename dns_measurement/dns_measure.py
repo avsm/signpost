@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
-from routing import SP_routing
 import dns_test
 
+import os
 import ldns
 import sys
-
+import glob
 import getopt
 
 test_opt = dict(nameserver = [], data_dir = "./",
-        tests = [], domain = "d3.signpo.st.")
+        tests = [], domain = "test.signpo.st.", intf = "any")
 
-optlist, args = getopt.getopt(sys.argv[1:], 'n:o:d:')
+optlist, args = getopt.getopt(sys.argv[1:], 'n:o:d:i:h')
 
 for opt in optlist:
     if opt[0] == "-n":
@@ -21,8 +21,13 @@ for opt in optlist:
         test_opt["data_dir"] = opt[1] + "/"
     elif opt[0] == "-d":
         test_opt["domain"] = opt[1]
+    elif opt[0] == "-i":
+        test_opt["intf"] = opt[1]
+    elif opt[0] == "-h":
+      print """usage: ./dns_measure.py [-n nameserver_ip] [-i intf] [-o output_dir] [-d domain] [test_file]"""
+      sys.exit(1)
     else:
-        print "unrecognised parameter %s"%(opt[0])
+            print "unrecognised parameter %s"%(opt[0])
 
 # define which test we will run
 if len(args) > 0:
@@ -41,7 +46,6 @@ else:
 
 # load routing information in order to know which device we need to
 # monitor.
-rt = SP_routing()
 
 if len(test_opt["nameserver"]) == 0:
     print """No nameservers define, loading default nameserver from
@@ -53,5 +57,5 @@ if len(test_opt["nameserver"]) == 0:
         test_opt["nameserver"].append(str(ns))
 
 for ns in test_opt["nameserver"]:
-    print "%s %s %s"%(ns, rt.get_gw_for_ip(str(ns)), rt.get_intf_for_ip(str(ns)))
-    dns_test.run_test(str(ns),rt.get_intf_details(str(ns)), test_opt)
+    print "%s"%(ns)
+    dns_test.run_test(str(ns),str(ns), test_opt)
