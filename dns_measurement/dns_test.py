@@ -25,8 +25,8 @@ def load_test(resolver, logger, test_opt):
             __import__(test)
 
         mymodule = sys.modules[test]
-        test_log = logger.getChild(test)
-        mymodule.run_test(resolver, test_log, test_opt)
+#        test_log = logger.getLogger(test)
+        mymodule.run_test(resolver, logger, test_opt)
         
         # give some time to pcap to save all files
         sleep(10)
