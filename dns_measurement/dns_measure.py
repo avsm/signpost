@@ -9,7 +9,7 @@ import glob
 import getopt
 
 test_opt = dict(nameserver = [], data_dir = "./",
-        tests = [], domain = "d3.signpo.st.", intf = "any")
+        tests = [], domain = "test.signpo.st.", intf = "any")
 
 optlist, args = getopt.getopt(sys.argv[1:], 'n:o:d:i:h')
 

@@ -15,12 +15,21 @@ import pcapy
 # this is really ugly, but useful also
 running = True
 
-def load_test(resolver, logger, test_opt):
+def load_test(measurement_id_str, measurement_id, logger, test_opt):
     # for each script in folder test, load the code and run run_test function
     for test in test_opt["tests"]:
-        print "running test %s"%(test)
+        # create a tmp file that resemple a resolv.conf file with only a single name server
+        os.system("echo nameserver %s > %s/tmp.resolv.conf"%(measurement_id,
+            measurement_id_str))
+        resolver = ldns.ldns_resolver.new_frm_file("%s/tmp.resolv.conf"%(measurement_id_str))
+        resolver.set_recursive(True)
 
-       # if module is not loaded, load it
+        # remove resolv.conf file
+        os.unlink("%s/tmp.resolv.conf"%(measurement_id_str))
+        print "running test %s"%(test)
+        
+        logger.warning("running test %s"% test)
+        # if module is not loaded, load it
         if not test in sys.modules:
             __import__(test)
 
@@ -66,20 +75,13 @@ def run_test(ns, measurement_id, test_opt):
 
     # save the log to file
     logging.basicConfig(filename= measurement_id_str + "/measurement.log", level=logging.DEBUG)
+    # logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(measurement_id_str)
 
-    # create a tmp file that resemple a resolv.conf file with only a single name server
-    os.system("echo nameserver %s > %s/tmp.resolv.conf"%(measurement_id,
-            measurement_id_str))
-    resolver = ldns.ldns_resolver.new_frm_file("%s/tmp.resolv.conf"%(measurement_id_str))
-    resolver.set_recursive(True)
-
-    # remove resolv.conf file
-    os.unlink("%s/tmp.resolv.conf"%(measurement_id_str))
-    
+   
     # init the threads
-    th1 = threading.Thread(target = load_test, args = (resolver, logger,
-        test_opt))
+    th1 = threading.Thread(target = load_test, args = (measurement_id_str, 
+            measurement_id, logger, test_opt))
     th2 = threading.Thread(target = capture_packets, 
             args = (test_opt["intf"], measurement_id_str))
 
