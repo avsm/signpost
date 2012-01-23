@@ -1,7 +1,5 @@
 module Simulation
   class SetupDomains
-    attr_reader :utilisation
-
     def initialize p, root_server
       @domain_roots = []
       @domains_upper_probability_bound = 0
@@ -30,18 +28,18 @@ module Simulation
       @domain_prob[domain_num].name
     end
 
+    def utilisation
+      util = 0
+      max = 0
+      @domain_roots.each {|r| 
+        util += r.utilisation
+        max += r.capacity
+      }
+      util.to_f / max
+    end
+
     def end_simulation
       puts "Had #{@domain_roots.size} domains"
-
-      @utilisation = Array.new(@domain_roots.first.utilisation.size)
-      @domain_roots.each do |d|
-        d.utilisation.each_index do |n|
-          @utilisation[n] ||= 0
-          @utilisation[n] += d.utilisation[n]
-        end
-      end
-      num_domains = @domain_roots.size
-      @utilisation.map {|u| u / num_domains}
     end
 
     def start_tick
@@ -58,40 +56,125 @@ module Simulation
   end
 
   class SetupResolvers
-    attr_reader :resolvers, :users, :utilisation
+    attr_reader :resolvers, :devices
 
     def initialize p, domains, root_server
       # We have Ø resolvers
       @resolvers = []
-      # We have P users in total
-      @users = []
+      # We have P devices in total
+      @devices = []
 
       (Distribution.random(p.min_resolvers, p.max_resolvers)).times do |n|
         resolver = Agents::Resolver.new root_server
-        # Now generate users for the resolver
-        num_users = Distribution.powerlaw(p.min_users_per_resolver,
-                                          p.max_users_per_resolver,
-                                          p.users_per_resolver_powerlaw_bias)
-        num_users.times do |n|
-          user = Agents::User.new resolver, domains, p
-          resolver.users << user
-          @users << user
+        # Now generate devices for the resolver
+        num_devices = Distribution.powerlaw(p.min_devices_per_resolver,
+                                          p.max_devices_per_resolver,
+                                          p.devices_per_resolver_powerlaw_bias)
+        num_devices.times do |n|
+          device = Agents::Device.new resolver, domains, p
+          resolver.devices << device
+          @devices << device
         end
 
         @resolvers << resolver
       end
+
+      puts "Created #{@resolvers.size} resolvers"
+      puts "Created #{@devices.size} clients"
+
+      ###################
+      # MAKE SOME DEVICES INTO SIGNPOSTS
+      ###################
+      
+      # Now we want to make X percent of the devices into signpost
+      # devices.
+      num_devices = @devices.size
+      percentage = p.percentage_signposts
+      num_signpost_devices = num_devices * percentage / 100
+
+      puts "Making #{num_signpost_devices} into signposts"
+
+      # Choose a set of devices, that can be made into signposts
+      signposts = select_devices @devices, num_signpost_devices
+      previous = []
+      to_add = 0
+      groups = []
+      signposts.each do |signpost|
+        # Find how many we should add to a user
+        if to_add == 0 then
+          previous = []
+          groups << signpost
+          to_add = Distribution.powerlaw(p.min_num_signposts,
+                                         p.max_num_signposts,
+                                         p.num_signposts_bias)
+        end
+        to_add -= 1
+
+        # On average P percent of a users signposts are in the cloud
+        # Should this one be?
+        cloud = false
+        cloud = true if (rand(100).to_i) > p.signposts_at_edge
+        signpost.make_signpost previous, cloud
+        previous << signpost
+        if cloud then
+          # We create another device for the same resolver.
+          # Otherwise we have fewer devices per resolver when
+          # more signposts migrate to the cloud, and that doesn't
+          # make sense
+          resolver = signpost.resolver
+          device = Agents::Device.new resolver, domains, p
+          @devices << device
+        end
+      end
+
+      # Assign friends to all the signpsost.
+      groups.each do |group_leader|
+        sp_domain = Agents::DomainRoot.new root_server, true
+
+        # So let's find a set of friends from the other
+        # signpost domains ("groups")
+        num_friends = Distribution.powerlaw(p.min_number_of_friends,
+                                            p.max_number_of_friends,
+                                            p.friend_count_powerlaw_bias)
+        friends = select_devices groups - [group_leader], num_friends
+        group_leader.add_friends friends.map do |friend|
+          {
+            :friend => friend, 
+            :prob_access => Distribution.powerlaw(p.min_prob_access_friend,
+                                                  p.max_prob_access_friend,
+                                                  p.access_friend_powerlaw_bias),
+            :domain => sp_domain.name
+          }
+        end
+
+      end
+    end
+
+    # Returns random num devices
+    def select_devices selection, num
+      devices = []
+      return selection if num >= selection.size
+      while num > 0 do
+        device = selection[rand(selection.size).to_i]
+        unless devices.include?(device) then
+          devices << device
+          num -= 1
+        end
+      end
+      devices
+    end
+
+    def utilisation
+      util = 0
+      max = 0
+      @resolvers.each {|r| 
+        util += r.utilisation
+        max += r.capacity
+      }
+      util.to_f / max
     end
 
     def end_simulation
-      @utilisation = Array.new(@resolvers.first.utilisation.size)
-      @resolvers.each do |r|
-        r.utilisation.each_index do |n|
-          @utilisation[n] ||= 0
-          @utilisation[n] += r.utilisation[n]
-        end
-      end
-      num_resolvers = @resolvers.size
-      @utilisation.map {|u| u / num_resolvers}
     end
   end
 end
