@@ -29,14 +29,14 @@ def run_test(resolver, logger, test_opt):
     # run the latency test using the iodine
     print "running latency test..."
     out_file = open("%s/latency.log"%(test_opt["output_dir"]), "w")
-    res = subprocess.call(["/bin/ping", "-c", "10", "10.0.0.1"],
+    res = subprocess.call(["ping", "-c", "10", "10.0.0.1"],
             stdout=out_file, stderr=out_file)
     out_file.close()
 
     # testing throughput using iperf
 #    print "running throughput test..."
     out_file = open("%s/throughput-individual.log"%(test_opt["output_dir"]), "w")
-    res = subprocess.call(["/usr/bin/iperf", "-c", "10.0.0.1", "-u", "-r", "-i", "1",
+    res = subprocess.call(["iperf", "-c", "10.0.0.1", "-u", "-r", "-i", "1",
         "-t", "30"], stdout=out_file, stderr=out_file)
     out_file.close()
 
