@@ -11,10 +11,10 @@
 # - DNS Performance and the Effectiveness of Caching [2002 IEEE]
 #
 # Signpost requests all happen within a domain. Because of the heavy caching of
-# NS records, the extra load on the root and intermediate name servers, is
-# greatly independent of the number of signpost DNS requests made.
+# NS records, the extra load on the root and intermediate name servers is
+# independent of the number of signpost DNS requests made.
 # For this reason I am not modeling the increase of requests as seen by the
-# root servers, or name servers up the chain.
+# root or name servers.
 # 
 # All signpost requests will on the other hand pass through local resolvers
 # that either recursively resolve the requests, or proxy them to another
@@ -76,92 +76,129 @@
 #
 
 
-# Devices per router
-dpr = 10
+def gen_load(options)
+  # Devices per router
+  dpr = options[:dpr] || 10
 
-# Devices per user
-dpu = 2
+  # Devices per user
+  dpu = options[:dpu] || 2
 
-# Fraction of a users signpost that is in the cloud
-fspc = 0.8
+  # Fraction of a users signpost that is in the cloud
+  fspc = options[:fspc] || 0.8
 
-# How much more a signpost request
-# costs compared to a normal DNS request, i.e. how many DNS packets are sent
-# over iodine per request a signpost makes. Such a request will include keys
-# and TSIGs etc.
-sp_dns_cost_multiple = 4
+  # How much more a signpost request
+  # costs compared to a normal DNS request, i.e. how many DNS packets are sent
+  # over iodine per request a signpost makes. Such a request will include keys
+  # and TSIGs etc.
+  sp_dns_cost_multiple = 4
 
-# How much signpost traffic there is compared to DNS traffic
-amount_of_signpost_traffic = 0.3
+  # How much signpost traffic there is compared to DNS traffic
+  amount_of_signpost_traffic = options[:amount_of_signpost_traffic] || 0.3
 
-# Load of DNS, i.e. how many requests per second per device.
-# Is divided out, so should't matter. Unfortunately due to floating point
-# rounding errors it does slightly change the final outcome.
-dns_load = 1_000_000
+  # Load of DNS, i.e. how many requests per second per device.
+  # Is divided out, so should't matter. Unfortunately due to floating point
+  # rounding errors it does slightly change the final outcome.
+  dns_load = 1_000_000
 
-# Fraction of signpost communication that is internal, i.e. trying to establish
-# routes to other internal signposts, vs communication that is against
-# signposts in other domains, i.e. trying to establish a tunnel with a foreign
-# signpost.
-fraction_internal = 0.5
+  # Fraction of signpost communication that is internal, i.e. trying to establish
+  # routes to other internal signposts, vs communication that is against
+  # signposts in other domains, i.e. trying to establish a tunnel with a foreign
+  # signpost.
+  fraction_internal = options[:fraction_internal] || 0.5
 
-#-------------------------------------------------------------
+  #-------------------------------------------------------------
 
-# Signposts at edge
-# Number of devices at the router, minus the ones that are in the cloud.
-sp_edge = dpr - (dpr * fspc)
+  # Signposts at edge
+  # Number of devices at the router, minus the ones that are in the cloud.
+  sp_edge = dpu - (dpu * fspc)
 
-# Overhead caused by iodine is one packet every 4 seconds per signpost device
-# at the edge
-iodine_overhead = 1.0/4 * sp_edge
+  # Overhead caused by iodine is one packet every 4 seconds per signpost device
+  # at the edge
+  iodine_overhead = 1.0/4 * sp_edge
 
-# The normal load of DNS traffic
-# Each device at the resolver sends out dns_load packages per second.
-resolver_base_load = dpr * dns_load
+  # The normal load of DNS traffic
+  # Each device at the resolver sends out dns_load packages per second.
+  resolver_base_load = dpr * dns_load
 
-# The cost of one signpost request, compared to a normal DNS request
-# This is the amount one signpost request costs compared to a DNS request,
-# times the number of DNS messages being sent, times the fraction of this
-# traffic that comes from signposts.
-sp_request_cost = sp_dns_cost_multiple * dns_load * amount_of_signpost_traffic
+  # The cost of one signpost request, compared to a normal DNS request
+  # This is the amount one signpost request costs compared to a DNS request,
+  # times the number of DNS messages being sent, times the fraction of this
+  # traffic that comes from signposts.
+  sp_request_cost = sp_dns_cost_multiple * dns_load * amount_of_signpost_traffic
 
-# The extra signposts requests caused by signposts
-# Requests from signposts. This is a combination of requests to own signposts
-# about setting up internal tunnels or proxies, and requests to other signposts
-# about setting up tunnels to external signpost domains.
-signpost_requests_cost = sp_edge * sp_request_cost
+  # The extra signposts requests caused by signposts
+  # Requests from signposts. This is a combination of requests to own signposts
+  # about setting up internal tunnels or proxies, and requests to other signposts
+  # about setting up tunnels to external signpost domains.
+  signpost_requests_cost = sp_edge * sp_request_cost
 
-# The cost of the request sent to internal signposts.
-internal_sp_requests_cost = signpost_requests_cost * fraction_internal
+  # The cost of the request sent to internal signposts.
+  internal_sp_requests_cost = signpost_requests_cost * fraction_internal
 
-# Overhead from the internal communication from requests by signposts within
-# the same domain. Since each signpost request going out is broadcast back to
-# all the other signposts in the same domain, we have an additional message
-# being sent to all the signposts at the edge on average per signpost sent
-# message.
-internal_sp_req_sync_overhead = internal_sp_requests_cost * sp_edge
+  # Overhead from the internal communication from requests by signposts within
+  # the same domain. Since each signpost request going out is broadcast back to
+  # all the other signposts in the same domain, we have an additional message
+  # being sent to all the signposts at the edge on average per signpost sent
+  # message.
+  internal_sp_req_sync_overhead = internal_sp_requests_cost * sp_edge
 
-# The cost of sending messages to foreign signposts is the total cost of
-# signpost requests, minus the cost of the messages that are for internal
-# communication.
-foreign_sp_req_sync_cost = signpost_requests_cost - internal_sp_requests_cost
+  # The cost of sending messages to foreign signposts is the total cost of
+  # signpost requests, minus the cost of the messages that are for internal
+  # communication.
+  foreign_sp_req_sync_cost = signpost_requests_cost - internal_sp_requests_cost
 
-# Overhead of communicating with external signposts. Communication with
-# external signposts is extra costly, because it causes sync traffic both
-# within my own signpost domain, but also within the signpost domain of the
-# signpost being contacted. Hence sp_edge^2
-foreign_sp_req_sync_overhead = foreign_sp_req_sync_cost * sp_edge * sp_edge
+  # Overhead of communicating with external signposts. Communication with
+  # external signposts is extra costly, because it causes sync traffic both
+  # within my own signpost domain, but also within the signpost domain of the
+  # signpost being contacted. Hence sp_edge^2
+  foreign_sp_req_sync_overhead = foreign_sp_req_sync_cost * sp_edge * sp_edge
 
-# Overhead caused by keeping signposts in sync
-sync_overhead = internal_sp_req_sync_overhead +  # sync resulting from internal communication
-                foreign_sp_req_sync_overhead     # sync resulting from foreign signposts contacting us
+  # Overhead caused by keeping signposts in sync
+  sync_overhead = internal_sp_req_sync_overhead +  # sync resulting from internal communication
+                  foreign_sp_req_sync_overhead     # sync resulting from foreign signposts contacting us
 
-# The load when signpost systems are in use
-resolver_signpost_load = resolver_base_load +
-                         iodine_overhead +
-                         signpost_requests_cost +
-                         sync_overhead
+  # The load when signpost systems are in use
+  resolver_signpost_load = resolver_base_load +
+                           iodine_overhead +
+                           signpost_requests_cost +
+                           sync_overhead
 
-extra_load = resolver_signpost_load.to_f / resolver_base_load
+  extra_load = resolver_signpost_load.to_f / resolver_base_load
 
-puts "Load increases by a factor of: #{extra_load}"
+  return extra_load
+end
+
+options = {
+  :dpr => 100,
+  :dpu => 2,
+  :fspc => 0.8,
+  :amount_of_signpost_traffic => 0.1,
+  :fraction_internal => 0.1
+}
+
+# We want data for three scenarios,
+# start:        every user has two signpost devices
+# intermediate: every user has 10 signpost devices
+# domination:   every user has 100 signpost devices
+File.open("sim.csv", "w") do |f|
+  
+  num_signposts = [2] + (5..100).step(5).to_a
+  f.puts "perc_in_cloud\t#{(num_signposts.map {|l| "perc_sp_#{l}"}).join("\t")}"
+
+  # We now want to see what happens as more and more of the signposts
+  # move from the cloud and to the edge
+  100.downto(1).each do |percent|
+    options[:fspc] = percent / 100.0
+
+    f.print "#{percent}\t"
+
+    num_signposts.each do |num|
+      options[:dpu] = num
+      extra_load = gen_load options
+      f.print "#{extra_load}\t"
+
+    end
+    f.print "\n"
+
+  end
+end
