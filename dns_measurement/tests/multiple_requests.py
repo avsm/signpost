@@ -7,7 +7,7 @@ def run_test(resolver, logger, test_opt):
     # create dns packet
     resolver.set_dnssec(True)
 
-    res = resolver.prepare_query_pkt("d3.signpo.st", ldns.LDNS_RR_TYPE_MX,
+    res = resolver.prepare_query_pkt(test_opt["domain"], ldns.LDNS_RR_TYPE_MX,
             ldns.LDNS_RR_CLASS_IN, 0)
 
     res_code = res.pop(0)
@@ -20,7 +20,7 @@ def run_test(resolver, logger, test_opt):
     pkt.set_aa(True)
 
     pkt.push_rr(ldns.LDNS_SECTION_QUESTION,
-         ldns.ldns_rr.new_question_frm_str("narseo.d3.signpo.st IN A"))
+         ldns.ldns_rr.new_question_frm_str("narseo.%s IN A"%(test_opt["domain"])))
 
     logger.warn(pkt)
 

@@ -11,11 +11,10 @@ def run_test(resolver, logger, test_opt):
     # create dns packet
 
     ns = resolver.pop_nameserver()
-    print ns
     out_file = open("%s/iodine.log"%(test_opt["output_dir"]), "w")
-#    res = system("/usr/sbin/iodine -P foo %s %s"%(ns, test_opt["domain"]))
-    iodine_res = subprocess.call(["/usr/sbin/iodine", "-P", "foo", str(ns),
-        test_opt["domain"]], stderr=out_file, stdout=out_file)
+#    res = system("/usr/sbin/iodine -P foo %s test.%s"%(ns, test_opt["domain"]))
+    iodine_res = subprocess.call(["iodine", "-r", "-P","foo", str(ns),
+        "test."+test_opt["domain"]], stderr=out_file, stdout=out_file)
     out_file.close()
 
     # iodine failed
@@ -24,28 +23,23 @@ def run_test(resolver, logger, test_opt):
         return
 
     #setup tcpdump to capture data through tcpdump
-    tcpdump = subprocess.Popen(["/usr/sbin/tcpdump", "-i", "dns0", "-w", 
+    tcpdump = subprocess.Popen(["tcpdump", "-i", "dns0", "-w", 
         "%s/iodine_trace.pcap"%(test_opt["output_dir"])])
        
     # run the latency test using the iodine
     print "running latency test..."
     out_file = open("%s/latency.log"%(test_opt["output_dir"]), "w")
-    res = subprocess.call(["/bin/ping", "-c", "2", "192.168.0.1"],
+    res = subprocess.call(["ping", "-c", "10", "10.0.0.1"],
             stdout=out_file, stderr=out_file)
     out_file.close()
 
     # testing throughput using iperf
-    print "running throughput test..."
+#    print "running throughput test..."
     out_file = open("%s/throughput-individual.log"%(test_opt["output_dir"]), "w")
-    res = subprocess.call(["/usr/bin/iperf", "-c", "192.168.0.1", "-r", "-i", "1",
-        "-t", "60"], stdout=out_file, stderr=out_file)
+    res = subprocess.call(["iperf", "-c", "10.0.0.1", "-u", "-r", "-i", "1",
+        "-t", "30"], stdout=out_file, stderr=out_file)
     out_file.close()
 
-    out_file = open("%s/throughput-parallel.log"%(test_opt["output_dir"]), "w")
-    res = subprocess.call(["/usr/bin/iperf", "-c", "192.168.0.1", "-d", "-i", "1",
-        "-t", "60"], stdout=out_file, stderr=out_file)
-    out_file.close()
-
-    tcpdump.terminate()
+    tcpdump.kill()
     system("killall iodine")
 

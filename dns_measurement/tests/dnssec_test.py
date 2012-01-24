@@ -4,7 +4,7 @@ import ldns
 import logging
 
 
-def simple_lookup(resolver, logger, name, typ):
+def simple_lookup(resolver, logger, name, typ, checking):
     
     res = resolver.prepare_query_pkt(name, typ,
             ldns.LDNS_RR_CLASS_IN, 0)
@@ -17,6 +17,7 @@ def simple_lookup(resolver, logger, name, typ):
     pkt = res.pop(0)
     pkt.set_rd(True)
     pkt.set_aa(True)
+    pkt.set_cd(checking)
     logger.warn(pkt)
 
     # send request
@@ -55,6 +56,7 @@ def run_test(resolver, logger, test_opt):
     pkt = res.pop(0)
     pkt.set_rd(True)
     pkt.set_aa(True)
+    pkt.set_cd(True)
     logger.warn(pkt)
 
     # send request
@@ -69,24 +71,39 @@ def run_test(resolver, logger, test_opt):
     
     keys = pkt.rr_list_by_type(ldns.LDNS_RR_TYPE_DNSKEY, 
            ldns.LDNS_SECTION_ANSWER)
-    
-    while keys.rr_count() > 0:
-        rr = keys.pop_rr()
-        print rr
-        resolver.push_dnssec_anchor(rr)
+    if keys :
+      while keys.rr_count() > 0:
+          rr = keys.pop_rr()
+          print rr
+          resolver.push_dnssec_anchor(rr)
 
-    simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_SOA)
-    simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_NS)
-    simple_lookup(resolver, logger, "haris."+test_opt["domain"], ldns.LDNS_RR_TYPE_A)
-    simple_lookup(resolver, logger, "narseo."+test_opt["domain"], ldns.LDNS_RR_TYPE_A)
-    simple_lookup(resolver, logger, "anil."+test_opt["domain"], ldns.LDNS_RR_TYPE_AAAA)
-    simple_lookup(resolver, logger, "anil."+test_opt["domain"], ldns.LDNS_RR_TYPE_AAAA)
-    simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_MX)
+    for checking in [True, False]:
+      simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_SOA,
+                    checking)
+      simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_NS,
+                    checking)
+      simple_lookup(resolver, logger, "haris."+test_opt["domain"], ldns.LDNS_RR_TYPE_A,
+                    checking)
+      simple_lookup(resolver, logger, "narseo."+test_opt["domain"], ldns.LDNS_RR_TYPE_A,
+                      checking)
+      simple_lookup(resolver, logger, "anil."+test_opt["domain"], ldns.LDNS_RR_TYPE_AAAA,
+                      checking)
+      simple_lookup(resolver, logger, "anil."+test_opt["domain"], ldns.LDNS_RR_TYPE_AAAA,
+                    checking)
+      simple_lookup(resolver, logger, test_opt["domain"], ldns.LDNS_RR_TYPE_MX,
+                    checking)
     
-    simple_lookup(resolver, logger,"_http._tcp."+test_opt["domain"], ldns.LDNS_RR_TYPE_SRV)
-    simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_HINFO)
-    simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_LOC)
-    simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_APL)
-    simple_lookup(resolver, logger,"faulty."+test_opt["domain"],
-            ldns.LDNS_RR_TYPE_A)
+      simple_lookup(resolver, logger,"_http._tcp."+test_opt["domain"], ldns.LDNS_RR_TYPE_SRV,
+                    checking)
+      simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_HINFO,
+                    checking)
+      simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_LOC,
+                    checking)
+      simple_lookup(resolver, logger,"andrius."+test_opt["domain"], ldns.LDNS_RR_TYPE_APL,
+                    checking)
+      simple_lookup(resolver, logger,"faulty."+test_opt["domain"],
+            ldns.LDNS_RR_TYPE_A, checking)
+      simple_lookup(resolver, logger,"nonexisting."+test_opt["domain"], ldns.LDNS_RR_TYPE_A,
+                    checking)
+
     resolver.set_dnssec(False)
