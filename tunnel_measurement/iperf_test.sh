@@ -6,7 +6,7 @@
 tunnel_name=$1
 timestamp=$2
 mon_intf=$3
-loc=home
+loc=lab
 loc_ip=$4
 loc_port=$5
 base_port=$6
@@ -27,7 +27,7 @@ echo starting iperf session
 ping $loc_ip | tee $loc-ping_iperf_tcp-$tunnel_name-$timestamp.txt &
 
 echo iperf -c $loc_ip -i 1 -t $duration -p $loc_port -d > test_output.txt 
-iperf -c $loc_ip -i 1 -t $duration -p $loc_port -L $loc_port -d | tee $loc-iperf_tcp-$tunnel_name-$timestamp.txt &
+iperf -c $loc_ip -i 1 -t $duration -p $loc_port -L $loc_port -d -F /tmp/input_data | tee $loc-iperf_tcp-$tunnel_name-$timestamp.txt &
 
 sleep $duration;
 
@@ -68,7 +68,7 @@ echo starting streaming test;
 ping $loc_ip | tee $loc-ping_iperf_udp-$tunnel_name-$timestamp.txt &
 
 # dvd quality
-iperf -c $loc_ip -p $loc_port -L $loc_port -b 5700K -i 1 -t $duration -d | tee $loc-iperf_udp-$tunnel_name-$timestamp.txt &
+iperf -c $loc_ip -p $loc_port -L $loc_port -b 5700K -i 1 -t $duration -d -F /tmp/input_data | tee $loc-iperf_udp-$tunnel_name-$timestamp.txt &
 
 sleep $duration;
 
