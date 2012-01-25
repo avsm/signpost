@@ -36,6 +36,7 @@ class Params
     @params = {
       # How many timesteps we should simulate
       :timesteps => 100,
+      :num_experiments_per_percentage => 10,
 
       # Number of root servers : 1
       # Number of non-signpost enabled domains
@@ -58,7 +59,7 @@ class Params
       # Chance that a given device requests a random
       # domain in a given timestep
       :min_prob_request_domain => 0,
-      :max_prob_request_domain => 80,
+      :max_prob_request_domain => 80, # In percent
       :request_domain_bias => 2,
 
       # Social networking kind of parameters
@@ -138,94 +139,103 @@ File.open("#{file_name}.dat", "w") do |f|
   [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].each do |percentage|
     p.update :percentage_signposts, percentage
     
-    # Setup a root domain server
-    puts "Setting up root server for simulation run"
-    root = Agents::RootServer.new
+    p.num_experiments_per_percentage.times do 
+      # Setup a root domain server
+      puts "Setting up root server for simulation run"
+      root = Agents::RootServer.new
 
-    # We have X regular domains.
-    # The domains differ in popularity
-    # (for now following a power law distribution
-    puts "Setting up domains for simulation run"
-    domains = Simulation::SetupDomains.new p, root
+      # We have X regular domains.
+      # The domains differ in popularity
+      # (for now following a power law distribution
+      puts "Setting up domains for simulation run"
+      domains = Simulation::SetupDomains.new p, root
 
-    # Setup the resolvers for this simulation
-    puts "Setting up resolvers and devices for simulation run"
-    resolver_container = Simulation::SetupResolvers.new p, domains, root
+      # Setup the resolvers for this simulation
+      puts "Setting up resolvers and devices for simulation run"
+      resolver_container = Simulation::SetupResolvers.new p, domains, root
 
-    # We keep track of the current timestep.
-    current_timestep = 0
+      # We keep track of the current timestep.
+      current_timestep = 0
 
-    puts "Starting simulation run at #{percentage}% signposts"
+      puts "Starting simulation run at #{percentage}% signposts"
 
-    #######################
-    # Run simulation
-    #######################
+      #######################
+      # Run simulation
+      #######################
 
-    resolvers = resolver_container.resolvers
-    devices = resolver_container.devices
+      resolvers = resolver_container.resolvers
+      devices = resolver_container.devices
 
-    while current_timestep < p.timesteps
-      print "\n" if current_timestep % 100 == 0
-      print "."
+      while current_timestep < p.timesteps
+        print "\n" if current_timestep % 100 == 0
+        print "."
 
+        #---------------------------------------------
+        # Tell each agent that the tick is about to start
+        root.start_tick
+        domains.start_tick
+        resolvers.each {|r| r.start_tick}
+        devices.each {|u| u.start_tick}
+        #---------------------------------------------
+
+        # Tick each resolver
+        resolvers.each {|resolver| resolver.tick current_timestep}
+
+        # Tick each device
+        devices.each {|device| device.tick current_timestep}
+
+        # Write out data for logs
+        percentage = p.percentage_signposts
+        root_util = root.utilisation.to_f / root.capacity
+        ns_util = domains.utilisation
+        resolver_util = resolver_container.utilisation
+        f.puts "#{percentage}\t#{root_util}\t#{ns_util}\t#{resolver_util}"
+
+        #---------------------------------------------
+        # Tell each agent that the tick is about to end
+        root.end_tick
+        domains.end_tick
+        resolvers.each {|r| r.end_tick}
+        devices.each {|u| u.end_tick}
+        #---------------------------------------------
+        
+        # Move to the next timestep
+        current_timestep += 1
+
+      end # end while look
+
+      puts ""
       #---------------------------------------------
       # Tell each agent that the tick is about to start
-      root.start_tick
-      domains.start_tick
-      resolvers.each {|r| r.start_tick}
-      devices.each {|u| u.start_tick}
+      root.end_simulation
+      domains.end_simulation
+      resolvers.each {|r| r.end_simulation}
+      devices.each {|u| u.end_simulation}
+      resolver_container.end_simulation
       #---------------------------------------------
 
-      # Tick each resolver
-      resolvers.each {|resolver| resolver.tick current_timestep}
-
-      # Tick each device
-      devices.each {|device| device.tick current_timestep}
-
-      # Write out data for logs
-      percentage = p.percentage_signposts
-      root_util = root.utilisation.to_f / root.capacity
-      ns_util = domains.utilisation
-      resolver_util = resolver_container.utilisation
-      f.puts "#{percentage}\t#{root_util}\t#{ns_util}\t#{resolver_util}"
-
-      #---------------------------------------------
-      # Tell each agent that the tick is about to end
-      root.end_tick
-      domains.end_tick
-      resolvers.each {|r| r.end_tick}
-      devices.each {|u| u.end_tick}
-      #---------------------------------------------
+      puts ""
       
-      # Move to the next timestep
-      current_timestep += 1
+    end # end 10.times do
 
-    end # end while look
-
-    labels << "root at #{percentage}" <<
-              "ns at #{percentage}" <<
-              "resolver at #{percentage}"
+    labels << "resolver at #{percentage}"
+    # labels << "root at #{percentage}" <<
+    #           "ns at #{percentage}" <<
+    #           "resolver at #{percentage}"
     levels << percentage
     r.puts "root_#{percentage} <- r$root[r$percentage==\"#{percentage}\"]"
     r.puts "ns_#{percentage} <- r$ns[r$percentage==\"#{percentage}\"]"
     r.puts "resolver_#{percentage} <- r$resolver[r$percentage==\"#{percentage}\"]"
-    
-    #---------------------------------------------
-    # Tell each agent that the tick is about to start
-    root.end_simulation
-    domains.end_simulation
-    resolvers.each {|r| r.end_simulation}
-    devices.each {|u| u.end_simulation}
-    resolver_container.end_simulation
-    #---------------------------------------------
 
   end # end each-percentage
 
   r.puts "all_data <- c(#{
-      (levels.map {|l| "root_#{l}, ns_#{l}, resolver_#{l}"}).join(", ")
+      # (levels.map {|l| "root_#{l}, ns_#{l}, resolver_#{l}"}).join(", ")
+      (levels.map {|l| "resolver_#{l}"}).join(", ")
   })"
-  num_levels = 3 * levels.size
-  steps = p.timesteps
+  # num_levels = 3 * levels.size
+  num_levels = 1 * levels.size
+  steps = p.timesteps * p.num_experiments_per_percentage
   datapoints = num_levels * steps
   r.puts "levels <- gl(#{num_levels}, #{steps}, #{datapoints}, labels=c(#{
     (labels.map {|l| "\"#{l}\""}).join(", ")

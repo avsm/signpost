@@ -6,6 +6,10 @@
 
 # min and max are both inclusive
 # n is the distribution power: the higher, the more biased
+
+# http://rubystats.rubyforge.org/files/README_txt.html
+require 'rubystats'
+
 module Distribution
   def self.powerlaw(min,max,n)
       max += 1
@@ -15,5 +19,10 @@ module Distribution
 
   def self.random(min, max)
     min + rand(max - min).to_i
+  end
+
+  def self.number_of_signposts_per_user p
+    gen = Rubystats::NormalDistribution.new(mean, sd)
+    gen.rng               # a single random sample
   end
 end
