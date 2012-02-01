@@ -71,7 +71,7 @@ let str_of_addr address = match address with
 
 let str_of_node node =
   let first_addressable = hd node.ips in
-  str_of_addr first_addressable
+  str_of_addr first_addressable ^ " [" ^ node.name ^ "]"
 
 let rec str_of_tactics tactics = match tactics with
   | [] -> "No tactics used"
