@@ -1,8 +1,8 @@
 ### Starting build.
 # Target: server.ml.depends, tags: { debug, extension:ml, file:server.ml, ocaml, ocamldep, quiet, traverse }
-ocamlfind ocamldep -modules server.ml > server.ml.depends # cached
+ocamlfind ocamldep -modules server.ml > server.ml.depends
 # Target: server.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:server.cmo, file:server.ml, implem, ocaml, quiet, traverse }
-ocamlfind ocamlc -c -g -o server.cmo server.ml # cached
+ocamlfind ocamlc -c -g -o server.cmo server.ml
 # Target: server.byte, tags: { byte, debug, dont_link_with, extension:byte, file:server.byte, link, ocaml, program, quiet, traverse }
-ocamlfind ocamlc -g -linkpkg server.cmo -o server.byte # cached
+ocamlfind ocamlc -g -linkpkg server.cmo -o server.byte
 # Compilation successful.
