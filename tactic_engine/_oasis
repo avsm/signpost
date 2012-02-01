@@ -1,0 +1,13 @@
+OASISFormat: 0.2
+Name:        Signpost Server
+Version:     0.0.1-pre
+Synopsis:    Signpost server test
+Authors:     Sebastian Probst Eide
+License:     LGPL-2.1 with OCaml linking exception
+Plugins:     META (0.2)
+
+Executable signpost
+  Path:       .
+  BuildTools: ocamlbuild
+  MainIs:     server.ml
+  
