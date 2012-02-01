@@ -56,14 +56,6 @@ type tactic = {
 
 let (|>) a b = b a
 
-let does_tactic_provide_reqs tactic reqs =
-  try let _ = find (function req -> mem req tactic.provides) reqs in true
-  with Not_found -> false
-
-let tactics_providing_req reqs tactics =
-  tactics
-  |> filter (function tactic -> does_tactic_provide_reqs tactic reqs)
-
 let str_of_addr address = match address with
   | IPAddressInstance(IP(address, source)) -> address ^ " (" ^ source ^ ")"
   | SRVInstance(SRV(IP(address, source), Port(port))) -> address ^ ":" ^
@@ -84,11 +76,19 @@ let output_results tactics a b =
   let str_tac = str_of_tactics tactics in
   Printf.printf "Found connection %s -> %s (%s)\n" addr_a addr_b str_tac
 
+let does_tactic_provide_reqs tactic reqs =
+  try let _ = find (function req -> mem req tactic.provides) reqs in true
+  with Not_found -> false
+
+let tactics_providing_req reqs tactics =
+  tactics
+  |> filter (function tactic -> does_tactic_provide_reqs tactic reqs)
+
 let already_has_tunnel a b =
   let addr_a, addr_b = hd a.ips, hd b.ips in
   match addr_a, addr_b with
-  | IPAddressInstance(IP(_, "local")), IPAddressInstance(IP(_, "local")) -> true
-  | _ -> false
+  | IPAddressInstance(IP(_, "local")), IPAddressInstance(IP(_, "local")) -> false
+  | _ -> true
 
 (*
  * This function takes a goal, a set of requirements, and a starting point.
@@ -133,9 +133,9 @@ and make_permutations tactic params =
   match (already_has_tunnel params.start_node params.end_node) with
   | true ->
       (* these nodes have a bidirectional link, so we don't have
-       * to try to relay via a third party *)
-      execute_tactic new_params.start_node new_params.end_node
-          new_params.end_node tactic new_params
+       * to try to relay via a third party. Instead tell the tactic to relay
+       * through the receiving end. *)
+      execute_tactic params.start_node params.end_node params.end_node tactic new_params
   | false ->
       (* these nodes don't yet have a bidirectional link.
        * We therefore have to try all possible combos to 
@@ -150,7 +150,7 @@ and make_permutations tactic params =
               | (a,b) -> execute_tactic a b node tactic new_params))
 
 and execute_tactic a b c tactic params = 
-  let addr_a, addr_b, addr_c = hd a.ips, hd b.ips, hd c.ips in
+  let addr_a, addr_b, addr_c = (hd a.ips), (hd b.ips), (hd c.ips) in
   try
     let (new_a, new_b) = (tactic.run addr_a addr_b addr_c) in
     let updated_a = {a with ips = new_a :: a.ips} in
@@ -179,13 +179,13 @@ let test () =
   } in
   let nodes = [node1; node2; node3] in
 
-  let reqs = [Encryption;Authentication;Compression] in
+  let reqs = [Authentication;Encryption;Anonymity] in
 
   (* Currently the following tactics exist *)
   let tactics = [
     {
       tactic_name = "OpenVPN"; 
-      run = (fun a b c -> match (a, b, c) with
+      run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
         | IPAddressInstance(a), IPAddressInstance(b), IPAddressInstance(c) -> 
               SRVInstance(SRV(IP("149.0.12.1", "OpenVPN"), Port(1332))),
               SRVInstance(SRV(IP("123.0.10.3", "OpenVPN"), Port(1193)))
@@ -193,19 +193,23 @@ let test () =
       provides = [Authentication; Compression; Encryption]
     };{
       tactic_name = "IPSec"; 
-      run = (fun a b c -> match (a, b, c) with
+      run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
         | IPAddressInstance(a), IPAddressInstance(b), IPAddressInstance(c) -> 
               IPAddressInstance(IP("209.0.123.1", "IPSec")),
               IPAddressInstance(IP("22.0.1.103", "IPSec"))
         | _ -> raise Invalid_addressables);
-      provides = [Authentication; Encryption]
+      provides = [Authentication; Encryption; Compression]
     };{
       tactic_name = "TCPCrypt"; 
-      run = (fun a b c -> a, b);
+      run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
+        | SRVInstance(a), SRVInstance(b), SRVInstance(c) -> 
+              SRVInstance(SRV(IP("121.255.13.1", "TCPCrypt"), Port(1932))),
+              SRVInstance(SRV(IP("191.12.100.103", "TCPCrypt"), Port(1200)))
+        | _ -> raise Invalid_addressables);
       provides = [Encryption]
     };{
       tactic_name = "Iodine"; 
-      run = (fun a b c -> match (a, b, c) with
+      run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
         | IPAddressInstance(a), IPAddressInstance(b), IPAddressInstance(c) -> 
               IPAddressInstance(IP("14.0.123.1", "Iodine")),
               IPAddressInstance(IP("18.0.1.103", "Iodine"))
@@ -213,11 +217,11 @@ let test () =
       provides = [Authentication]
     };{
       tactic_name = "Tor"; 
-      run = (fun a b c -> match (a, b, c) with
+      run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
         | IPAddressInstance(a), IPAddressInstance(b), IPAddressInstance(c) -> 
               SRVInstance(SRV(IP("14.0.123.1", "Tor"), Port(1332))),
               SRVInstance(SRV(IP("18.0.1.103", "Tor"), Port(1193)))
-        | _ -> raise Invalid_addressables);
+        | a, b, c -> raise Invalid_addressables);
       provides = [Anonymity]
     }
   ] in
