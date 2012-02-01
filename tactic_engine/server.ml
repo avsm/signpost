@@ -1,30 +1,28 @@
 open List
 
-(* types for the different things you can request *)
-type ip = 
-  | IP of string
+exception Invalid_addressables
 
-type port =
-  | Port of int
-
-type srv =
-  | SRV of ip * port
-
-(* a node represents a control channel with which we 
- * can communicate with a node 
+(* IP's have two parts:
+ * - The ip itself
+ * - Who/what provides it. That could be local IP, or an IP provided by OpenVPN
+ * etc.
  *)
-type node =
-  | Node of string
+type ip = IP of string * string
+
+type port = Port of int
+
+type srv = SRV of ip * port
+
+(* TODO: Replace with whatever control channel we are using *)
+type control_channel = ControlChannel of string
 
 type addressable =
-  | ControlChannelInstance of node
   | IPAddressInstance of ip
   | SRVInstance of srv
 
 type goals = 
   | IPRecord
   | SRVRecord
-  | ControlChannel
 
 type requirement =
   | Authentication
@@ -32,8 +30,17 @@ type requirement =
   | Anonymity
   | Compression
 
-type tactic = {
+(* a node represents a control channel with which we 
+ * can communicate with a node 
+ *)
+type node = {
   name : string;
+  control_channel : control_channel;
+  ips : addressable list;
+}
+
+type tactic = {
+  tactic_name : string;
   (* The tactic function works as follows:
    * It takes three addressable units:
    * - Start point (A)
@@ -43,7 +50,7 @@ type tactic = {
    * - addressable entity that B can use to see A
    * - addressable entity that A can use to see B
    *)
-  run : (addressable * addressable * addressable) -> (addressable * addressable);
+  run : addressable -> addressable -> addressable -> (addressable * addressable);
   provides : requirement list
 }
 
@@ -57,18 +64,23 @@ let tactics_providing_req reqs tactics =
   tactics
   |> filter (function tactic -> does_tactic_provide_reqs tactic reqs)
 
-let str_of_addr a = match a with
-  | ControlChannelInstance(Node(name)) -> name
-  | IPAddressInstance(IP(address)) -> address
-  | SRVInstance(SRV(IP(address), Port(port))) -> address ^ ":" ^ (string_of_int port)
+let str_of_addr address = match address with
+  | IPAddressInstance(IP(address, source)) -> address ^ " (" ^ source ^ ")"
+  | SRVInstance(SRV(IP(address, source), Port(port))) -> address ^ ":" ^
+        (string_of_int port) ^ " (" ^ source ^ ")"
+
+let str_of_node node =
+  let first_addressable = hd node.ips in
+  str_of_addr first_addressable
 
 let rec str_of_tactics tactics = match tactics with
-  | [] -> "Used tactics:"
-  | tactic::rest -> (str_of_tactics rest) ^ " > " ^ tactic.name
+  | [] -> "No tactics used"
+  | tactic::[] -> tactic.tactic_name
+  | tactic::rest -> tactic.tactic_name ^ " over " ^ (str_of_tactics rest)
 
 let output_results tactics a b =
-  let addr_a = str_of_addr a in
-  let addr_b = str_of_addr b in
+  let addr_a = str_of_node a in
+  let addr_b = str_of_node b in
   let str_tac = str_of_tactics tactics in
   Printf.printf "Found connection %s -> %s (%s)\n" addr_a addr_b str_tac
 
@@ -92,54 +104,92 @@ let output_results tactics a b =
  * - Encrypted
  *)
 
-let rec tactize goal (node_a, node_b) reqs nodes tactics used_tactics = match reqs with
+let rec tactize (node_a, node_b) reqs nodes tactics used_tactics = match reqs with
   | [] -> output_results used_tactics node_a node_b
   | requirements ->
       tactics 
       |> tactics_providing_req requirements
-      |> iter (function tactic -> 
-          execute_tactic tactic goal (node_a, node_b) reqs nodes tactics used_tactics)
+      |> iter (fun tactic -> 
+          execute_tactic tactic (node_a, node_b) reqs nodes tactics used_tactics)
 
-and execute_tactic tactic goal (node_a, node_b) reqs nodes tactics used_tactics = 
+and execute_tactic tactic (node_a, node_b) reqs nodes tactics used_tactics = 
   let new_used_tactics = tactic :: used_tactics in
-  let new_req = (filter (function r -> not (mem r tactic.provides)) reqs) in
+  let new_req = (filter (fun r -> not (mem r tactic.provides)) reqs) in
   nodes 
-  |> iter (function node ->
+  |> iter (fun node ->
       [(node_a, node_b);(node_b, node_a)]
-      |> iter (function (a,b) ->
-          let (new_a, new_b) = tactic.run(a, b, node) in
-          tactize goal (new_a, new_b) new_req nodes tactics new_used_tactics)
+      |> iter (fun (a,b) ->
+          let addr_a, addr_b, addr_c = hd a.ips, hd b.ips, hd node.ips in
+          let (new_a, new_b) = (tactic.run addr_a addr_b addr_c) in
+          let updated_a = {a with ips = new_a :: a.ips} in
+          let updated_b = {b with ips = new_b :: b.ips} in
+          try tactize (updated_a, updated_b) new_req nodes tactics new_used_tactics
+          with Invalid_addressables -> ())
   )
 
 let test () =
-  let reqs = [Compression;Encryption] in
-  let node1 = ControlChannelInstance(Node "Node A") in
-  let node2 = ControlChannelInstance(Node "Node B") in
-  let node3 = ControlChannelInstance(Node "Node C") in
+  (* Create the nodes we have in our system *)
+  let node1 = {
+    name = "node A";
+    control_channel = ControlChannel("ChannelA");
+    ips = [IPAddressInstance(IP("10.0.0.1", "local"))]
+  } in
+  let node2 = {
+    name = "node B";
+    control_channel = ControlChannel("ChannelB");
+    ips = [IPAddressInstance(IP("11.0.0.1", "local"))]
+  } in
+  let node3 = {
+    name = "node C";
+    control_channel = ControlChannel("ChannelC");
+    ips = [IPAddressInstance(IP("12.0.0.1", "local"))]
+  } in
   let nodes = [node1; node2; node3] in
+
+  let reqs = [Anonymity;Authentication] in
+
+  (* Currently the following tactics exist *)
   let tactics = [
     {
-      name = "OpenVPN"; 
-      run = (function a, b, c -> a, b); 
+      tactic_name = "OpenVPN"; 
+      run = (fun a b c -> match (a, b, c) with
+        | IPAddressInstance(a), IPAddressInstance(b), IPAddressInstance(c) -> 
+              SRVInstance(SRV(IP("149.0.12.1", "OpenVPN"), Port(1332))),
+              SRVInstance(SRV(IP("123.0.10.3", "OpenVPN"), Port(1193)))
+        | _ -> raise Invalid_addressables);
       provides = [Authentication; Compression; Encryption]
     };{
-      name = "IPSec"; 
-      run = (function a, b, c -> a, b);
-      provides= [Authentication; Encryption]
+      tactic_name = "IPSec"; 
+      run = (fun a b c -> match (a, b, c) with
+        | IPAddressInstance(a), IPAddressInstance(b), IPAddressInstance(c) -> 
+              IPAddressInstance(IP("209.0.123.1", "IPSec")),
+              IPAddressInstance(IP("22.0.1.103", "IPSec"))
+        | _ -> raise Invalid_addressables);
+      provides = [Authentication; Encryption]
     };{
-      name = "TCPCrypt"; 
-      run = (function a, b, c -> a, b);
-      provides= [Encryption]
+      tactic_name = "TCPCrypt"; 
+      run = (fun a b c -> a, b);
+      provides = [Encryption]
     };{
-      name = "Iodine"; 
-      run = (function a, b, c -> a, b);
-      provides= [Authentication]
+      tactic_name = "Iodine"; 
+      run = (fun a b c -> match (a, b, c) with
+        | IPAddressInstance(a), IPAddressInstance(b), IPAddressInstance(c) -> 
+              IPAddressInstance(IP("14.0.123.1", "Iodine")),
+              IPAddressInstance(IP("18.0.1.103", "Iodine"))
+        | _ -> raise Invalid_addressables);
+      provides = [Authentication]
     };{
-      name = "Tor"; 
-      run = (function a, b, c -> a, b);
-      provides= [Anonymity]
+      tactic_name = "Tor"; 
+      run = (fun a b c -> match (a, b, c) with
+        | IPAddressInstance(a), IPAddressInstance(b), IPAddressInstance(c) -> 
+              SRVInstance(SRV(IP("14.0.123.1", "Tor"), Port(1332))),
+              SRVInstance(SRV(IP("18.0.1.103", "Tor"), Port(1193)))
+        | _ -> raise Invalid_addressables);
+      provides = [Anonymity]
     }
   ] in
-  tactize IPRecord (node1, node2) reqs nodes tactics []
+
+  (* Action GO! Find a way to connect the nodes :*)
+  tactize (node1, node2) reqs nodes tactics []
 
 let _ =  test ()
