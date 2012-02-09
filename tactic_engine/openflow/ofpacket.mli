@@ -22,6 +22,7 @@ type uint64 = int64
 val uint8_of_int : int -> char
 type ipv4 = uint32
 val ipv4_to_string : int32 -> string
+val ipv4_addr_of_tuple : (int32 * int32 * int32 * int32) -> int32
 type byte = uint8
 val byte : int -> byte
 val int_of_byte : char -> int
