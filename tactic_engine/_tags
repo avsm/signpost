@@ -15,3 +15,5 @@
 "_darcs": not_hygienic
 # Executable signpost
 # OASIS_STOP
+
+<**/.ml>: warn_Z, annot
