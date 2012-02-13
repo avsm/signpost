@@ -67,23 +67,17 @@ def compile_and_run file
   if ok_path? file then
     Screen.clear
     ohai "Compiling"
-    output = `ocaml #{$dir}/setup.ml -build`
+    # command = "ocaml #{$dir}/setup.ml -build"
+    command = "ocaml setup.ml -build"
+    output = `#{command}`
     contains_error = output =~ /error/i ? true : false
     error "Did not compile cleanly" if contains_error
     output.split("\n").each {|s| contains_error ? puts(s) : ohai(s)}
     if $?.to_i == 0 then
       puts ""
       ohai "Executing program"
-      success `#{$dir}/_build/server.byte`
+      success `#{$dir}/_build/engine.byte`
     end
-  end
-end
-
-def configure file
-  if ok_path? file then
-    Screen.clear
-    ohai "Configuring"
-    `ocaml #{$dir}/setup.ml -configure`
   end
 end
 
@@ -91,16 +85,6 @@ Screen.clear
 ohai "Monitoring changes in #{$dir}"
 FSSM.monitor($dir) do
   update do |b, r|
-    compile_and_run r
-  end
-
-  create do |b, r|
-    configure r
-    compile_and_run r
-  end
-
-  delete do |b, r|
-    configure r
     compile_and_run r
   end
 end

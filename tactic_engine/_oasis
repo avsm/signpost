@@ -9,5 +9,5 @@ Plugins:     META (0.2)
 Executable signpost
   Path:       .
   BuildTools: ocamlbuild
-  MainIs:     server.ml
+  MainIs:     engine.ml
   
