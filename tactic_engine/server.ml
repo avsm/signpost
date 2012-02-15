@@ -29,6 +29,7 @@ type requirement =
   | Encryption
   | Anonymity
   | Compression
+  | Bidirectional
 
 (* a node represents a control channel with which we 
  * can communicate with a node 
@@ -49,6 +50,8 @@ type tactic = {
    * It returns
    * - addressable entity that B can use to see A
    * - addressable entity that A can use to see B
+   *
+   * We should only use relay nodes that we know can be used as relay nodes
    *)
   run : addressable -> addressable -> addressable -> (addressable * addressable);
   provides : requirement list
@@ -163,23 +166,23 @@ and execute_tactic a b c tactic params =
 let test () =
   (* Create the nodes we have in our system *)
   let node1 = {
-    name = "node A";
+    name = "seb";
     control_channel = ControlChannel("ChannelA");
     ips = [IPAddressInstance(IP("10.0.0.1", "local"))]
   } in
   let node2 = {
-    name = "node B";
+    name = "andrius";
     control_channel = ControlChannel("ChannelB");
     ips = [IPAddressInstance(IP("11.0.0.1", "local"))]
   } in
   let node3 = {
-    name = "node C";
+    name = "anil";
     control_channel = ControlChannel("ChannelC");
     ips = [IPAddressInstance(IP("12.0.0.1", "local"))]
   } in
   let nodes = [node1; node2; node3] in
 
-  let reqs = [Authentication;Encryption;Anonymity] in
+  let reqs = [Bidirectional;Compression;Encryption] in
 
   (* Currently the following tactics exist *)
   let tactics = [
@@ -190,7 +193,7 @@ let test () =
               SRVInstance(SRV(IP("149.0.12.1", "OpenVPN"), Port(1332))),
               SRVInstance(SRV(IP("123.0.10.3", "OpenVPN"), Port(1193)))
         | _ -> raise Invalid_addressables);
-      provides = [Authentication; Compression; Encryption]
+      provides = [Authentication; Compression; Encryption;Bidirectional]
     };{
       tactic_name = "IPSec"; 
       run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
@@ -198,7 +201,7 @@ let test () =
               IPAddressInstance(IP("209.0.123.1", "IPSec")),
               IPAddressInstance(IP("22.0.1.103", "IPSec"))
         | _ -> raise Invalid_addressables);
-      provides = [Authentication; Encryption; Compression]
+      provides = [Authentication; Encryption; Compression;Bidirectional]
     };{
       tactic_name = "TCPCrypt"; 
       run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
@@ -206,7 +209,7 @@ let test () =
               SRVInstance(SRV(IP("121.255.13.1", "TCPCrypt"), Port(1932))),
               SRVInstance(SRV(IP("191.12.100.103", "TCPCrypt"), Port(1200)))
         | _ -> raise Invalid_addressables);
-      provides = [Encryption]
+      provides = [Encryption;Bidirectional]
     };{
       tactic_name = "Iodine"; 
       run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
@@ -214,7 +217,7 @@ let test () =
               IPAddressInstance(IP("14.0.123.1", "Iodine")),
               IPAddressInstance(IP("18.0.1.103", "Iodine"))
         | _ -> raise Invalid_addressables);
-      provides = [Authentication]
+      provides = [Authentication;Bidirectional]
     };{
       tactic_name = "Tor"; 
       run = (fun addr_a addr_b addr_c -> match (addr_a, addr_b, addr_c) with
@@ -222,7 +225,7 @@ let test () =
               SRVInstance(SRV(IP("14.0.123.1", "Tor"), Port(1332))),
               SRVInstance(SRV(IP("18.0.1.103", "Tor"), Port(1193)))
         | a, b, c -> raise Invalid_addressables);
-      provides = [Anonymity]
+      provides = [Anonymity;Bidirectional]
     }
   ] in
 
@@ -236,6 +239,7 @@ let test () =
     used_tactics = []
   } in
   (* Action GO! Find a way to connect the nodes :*)
+  Printf.printf "%s wants to connect to %s\n" node1.name node2.name;
   tactize params
 
 let _ =  test ()
