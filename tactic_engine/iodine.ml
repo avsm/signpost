@@ -10,6 +10,10 @@ let check_stackability nodeA nodeB = match (nodeA, nodeB) with
             Sp.IPAddressInstance(Sp.IP("0.0.0.0", "Dummy"))
       | a, b -> raise Sp.NonValidAddressables
 
+(* ******************************************
+ * Try to setup an iodine tunnel
+ * ******************************************)
+
 let do_rpc ch rpc payload = 
   match (Sch.invoke_rpc 
       ~channel: ch 
