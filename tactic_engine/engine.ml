@@ -5,6 +5,17 @@ let name_from_tactic tactic =
 (* find all tactic combinations that are possible *)
 let build_static_tactic_tree available_tactics =
   let rec try_tactic ~tactics ~used_tactics ~properties ~results ~addr1 ~addr2 =
+    (* returns a list of properties that a tactic provides, that are not 
+     * already provided *)
+    let non_provided_properties t props = 
+      let module Tactic = (val t : Sp.TacticSig) in
+      let tactic_provides = (Tactic.provides ()) in
+      List.filter (fun req -> not (List.mem req properties)) tactic_provides in
+
+    (* the tactics that provides at least one property that is not already provided *)
+    let fresh_tactics = List.filter (fun t ->
+      (non_provided_properties t properties) <> []) tactics in
+
     (* At this point we have one more result, add it to the result list :*)
     let updated_results = (used_tactics, properties) :: results in
     (* itteratively run the next tactics, to create more diverse resutls *)
@@ -16,9 +27,9 @@ let build_static_tactic_tree available_tactics =
         let na1, na2 = Tactic.check_inputs addr1 addr2 in
         (* we don't want to repeatedly use the same tactic, so remove it *)
         let tactics_except_this = List.filter (fun a -> 
-          (name_from_tactic a) != (name_from_tactic t)) tactics in
+          (name_from_tactic a) <> (name_from_tactic t)) tactics in
         (* we now also have the properties of the tactic *)
-        let props = (Tactic.provides ()) @ properties in
+        let props = (non_provided_properties t properties) @ properties in
         (* and we want to remember having used an additional tactic *)
         let ut = t :: used_tactics in
         try_tactic 
@@ -29,7 +40,7 @@ let build_static_tactic_tree available_tactics =
             ~addr1: na1 
             ~addr2: na2
 
-      with Sp.NonValidAddressables -> acc) updated_results tactics
+      with Sp.NonValidAddressables -> acc) updated_results fresh_tactics
 
   in let foo_ip = Sp.IPAddressInstance(Sp.IP("0.0.0.0", "foo")) in
   try_tactic 
@@ -39,7 +50,6 @@ let build_static_tactic_tree available_tactics =
       ~results: []
       ~addr1: foo_ip
       ~addr2: foo_ip
-
 
 let output_options options = 
   let rec str_of_list conv delim things = match things with
