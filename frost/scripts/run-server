@@ -11,4 +11,4 @@ cd ${d}
 PASS=`cat PASSWD`
 killall iodined
 iodined -F /tmp/iodine.pid -P "${PASS}" -c -b 5353 172.16.9.1/24 i.d1.signpo.st
-../frost.native
+../server.native
