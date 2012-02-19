@@ -22,8 +22,8 @@ let external_ip = "50.19.186.111"
 let external_dns = "ec2-50-19-186-111.compute-1.amazonaws.com"
 
 let iodine_node_ip = "172.16.9.1"
-(* for testing *)
+(* for testing
 let iodine_node_ip = "127.0.0.1"
-
+ *)
 
 let signal_port = 3456
