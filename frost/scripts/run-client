@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+
+PASS="$(cat PASSWD)"
+iodine -f -r -P "$(PASS)" i.d1.signpo.st
