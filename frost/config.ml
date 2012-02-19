@@ -15,7 +15,6 @@
  *)
 
 let user = "avsm"
-let password = "foo"
 let signpost_number = 1
 let domain = "signpo.st"
 let ip_slash_24 = "172.16.11."
