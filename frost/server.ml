@@ -21,14 +21,29 @@ open Printf
 let our_domain =
   sprintf "d%d.%s" Config.signpost_number Config.domain
 
-let our_iodine_domain =
+let our_domain_l =
   let d = "d" ^ (string_of_int Config.signpost_number) in
-  [ "i"; d; Config.domain ]
+  [ d; Config.domain ]
 
 (* Respond with an NXDomain if record doesnt exist *)
 let nxdomain =
   return (Some { Dns.Query.rcode=`NXDomain; aa=false;
     answer=[]; authority=[]; additional=[] })
+
+(* Ip address response for a node *)
+let ip_resp ~dst ~src ~domain =
+  let open Dns.Packet in
+  let node_ip = Signal.get_node_ip dst in
+  let node = {
+    rr_name=dst::src::domain;
+    rr_class=`IN;
+    rr_ttl=0l;
+    rr_rdata=`A node_ip;
+  } in
+  let answer = [ node ] in
+  let authority = [] in
+  let additional = [] in
+  { Dns.Query.rcode=`NoError; aa=true; answer; authority; additional }
 
 (* Figure out the response from a query packet and its question section *)
 let get_response packet q =
@@ -36,27 +51,20 @@ let get_response packet q =
   let module DQ = Dns.Query in
   (* Normalise the domain names to lower case *)
   let qnames = List.map String.lowercase q.q_name in
-  (* First, check in the static zonefile trie if the domain is present *)
-  let answer_from_trie = Dns.(Query.answer_query q.q_name q.q_type Loader.(state.db.trie)) in
-  eprintf "answer_from_trie: %s\n%!" (string_of_rcode answer_from_trie.DQ.rcode);
-  (* It's an NXDOMAIN, check if it is a dynamic DNS response, otherwise
-   * use whatever came back from the trie *)
-  match answer_from_trie.DQ.rcode with 
-  |`NXDomain -> begin
+  eprintf "Q: %s\n%!" (String.concat " " qnames);
+  let from_trie = Dns.(Query.answer_query q.q_name q.q_type Loader.(state.db.trie)) in
+  match qnames with
     (* For this strawman, we assume a valid query has form
-     * <src node>.<dst node>.<password>.<username>.<domain name>
+     * <dst node>.<src node>.<domain name>
      *)
-    match qnames with
-    |src::dst::password::user::domain -> begin
-       let domain = String.concat "." domain in
-       eprintf "src:%s dst:%s pass:%s user:%s dom:%s\n%!" src dst password user domain;
-       answer_from_trie
-    end
-    |_ ->
-       eprintf "TODO: issue unknown response\n%!";
-       answer_from_trie
+  |dst::src::domain -> begin
+     let domain'=String.concat "." domain in
+     if domain' = our_domain then begin
+       eprintf "src:%s dst:%s dom:%s\n%!" src dst domain';
+       ip_resp ~dst ~src ~domain
+     end else from_trie
   end
-  |_ -> answer_from_trie
+  |_ -> from_trie
 
 let dnsfn ~src ~dst packet =
   let open Dns.Packet in

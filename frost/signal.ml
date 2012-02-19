@@ -18,11 +18,45 @@
 open Lwt
 open Printf
 
+
+(* node name -> IP address *)
+let nodes = Hashtbl.create 1
+
+let testing = Hashtbl.replace nodes "me" "127.0.0.1"
+
+(* in int32 format for dns. default to 0.0.0.0 *)
+let get_node_ip name =
+  let ipv4_addr_of_tuple (a,b,c,d) =
+    let (+) = Int32.add in
+    (Int32.shift_left a 24) +
+    (Int32.shift_left b 16) +
+    (Int32.shift_left c 8) + d
+  in
+  (* Read an IPv4 address dot-separated string *)
+  let ipv4_addr_of_string x =
+    let ip = ref 0l in
+    (try Scanf.sscanf x "%ld.%ld.%ld.%ld"
+      (fun a b c d -> ip := ipv4_addr_of_tuple (a,b,c,d));
+    with _ -> ());
+    !ip
+  in
+  let ip =
+    try ipv4_addr_of_string (Hashtbl.find nodes name)
+    with Not_found -> 0l
+  in
+  ip
+
+let handle_rpc =
+  let open Rpc in function
+  |None ->
+     eprintf "warning: bad rpc\n%!";
+     return ()
+  |Some (Hello (node,ip)) ->
+     eprintf "rpc: hello %s -> %s\n%!" node ip;
+     Hashtbl.replace nodes node ip;
+     return ()
+
 (* Listens on port Config.signal_port *)
-
-let send_hello ~src ~dst ip =
-  Rpc.rpc_to_string (Rpc.Hello ("",""))
-
 let bind_fd ~address ~port =
   lwt src = try_lwt
     let hent = Unix.gethostbyname address in
@@ -48,6 +82,6 @@ let server_t () =
     let subbuf = String.sub buf 0 len in
     eprintf "udp recvfrom %s : %s\n%!" (sockaddr_to_string dst) subbuf;
     let rpc = Rpc.rpc_of_string subbuf in
-    return ()
+    handle_rpc rpc;
   done
 

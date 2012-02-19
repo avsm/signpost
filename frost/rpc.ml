@@ -20,7 +20,6 @@ type ip = string
 type rpc = 
   |Hello of node_name * ip
 
-
 let rpc_to_json rpc =
   let open Json in
   Object [
