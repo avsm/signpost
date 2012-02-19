@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Generate fragments for the Ubuntu interfaces file
+
+SIGNAL_BRIDGE=signpost0
+TACTIC_BRIDGE=tactic0
+SIGNAL_IP=172.16.10.1
+TACTIC_IP=172.16.11.1
+DEV="10 11 12 13 14"
+
+cat <<__HEADER
+auto $SIGNAL_BRIDGE
+iface $SIGNAL_BRIDGE inet static
+  address $SIGNAL_IP
+  netmask 255.255.255.0
+  bridge_ports none
+  bridge_fd 0
+  bridge_stp off
+
+auto $TACTIC_BRIDGE
+iface $TACTIC_BRIDGE inet static
+  address $TACTIC_IP
+  netmask 255.255.255.0
+  bridge_ports none
+  bridge_fd 0
+  bridge_stp off
+
+__HEADER
+
+for i in $DEV; do
+  cat <<__IFACE
+auto tactic$i
+iface tactic$i inet manual
+  pre-up tunctl -u ubuntu -t \$IFACE; brctl addif $TACTIC_BRIDGE \$IFACE; ifconfig \$IFACE up
+  post-down tunctl -d \$IFACE
+
+auto signpost$i
+iface signpost$i inet manual
+  pre-up tunctl -u ubuntu -t \$IFACE; brctl addif $SIGNAL_BRIDGE \$IFACE; ifconfig \$IFACE up
+  post-down tunctl -d \$IFACE
+
+__IFACE
+done

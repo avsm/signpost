@@ -14,18 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-(**
-  * Every node is a routing element that can establish links to other
-  * nodes. They may be either fully Signpost-enabled, or dumb devices that
-  * can only use standard network protocols.
-  **)
-
-type cap = 
-  | Enabled  (* Full signpost service present *)
-  | Dumb     (* Device cannot be sent instructions *)
-
-type port = int 
-
 (* TODO better categorisation needed (wildcard matches, etc) *)
 type service =
   | HTTP

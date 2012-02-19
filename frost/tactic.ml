@@ -30,11 +30,10 @@ type ipsec_state = unit (* TODO *)
 type tactic =
   | TCP_connect of dst_port
   | Always_fail (* for testing *)
-(*
+  | HTTP_connect 
   | UDP_ping of src_port * dst_port
   | OpenVPN of openvpn_state
   | IPSec of ipsec_state
-*)
 
  
 (* Attempt a TCP connect out to dst:port *) 

@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2005-2012 Anil Madhavapeddy <anil@recoil.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,52 +14,78 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-let test () =
-  let g = Network.G.create () in
-  (* Make some devices *)
-  let cloud = Node.(make_node ~cap:Enabled ~name:"EC2") in
-  let nat = Node.(make_node ~cap:Enabled ~name:"HomeNAT") in
-  let iphone_3g = Node.(make_node ~cap:Dumb ~name:"iPhone3G") in
-  let iphone_wifi = Node.(make_node ~cap:Dumb ~name:"iPhoneWifi") in
-  let android_3g = Node.(make_node ~cap:Enabled ~name:"Android3G") in
-  let android_wifi = Node.(make_node ~cap:Enabled ~name:"AndroidWifi") in
-  let laptop = Node.(make_node ~cap:Enabled ~name:"Laptop") in
-  (* And some connections between the devices *)
-  let edges = Tactic.([
-    nat, cloud, TCP_connect 80;
-    iphone_3g, cloud, OpenVPN ();
-    iphone_wifi, nat, TCP_connect 80;
-    android_3g, cloud, OpenVPN ();
-    android_wifi, nat, UDP_ping (53,53);
-    laptop, nat, Always_fail;
-  ]) in
-  (* Populate the graph *)
-  List.iter (Network.G.add_vertex g)
-    [ cloud; nat; iphone_3g; iphone_wifi; android_3g; android_wifi];
-  List.iter (fun (src,dst,ty) ->
-    let t = Tactic.make_tactic ty in
-    let e = Network.G.E.create src t dst in
-    Network.G.add_edge_e g e
-  ) edges;
-  (* Dump it out in DOT format *)
-  let oc = open_out "tmp.dot" in
-  Network.DotOutput.output_graph oc g;
-  close_out oc;
-  g
+open Lwt 
+open Printf
 
-(**
-  * The evaluation loop for the network should be: 
+(* The domain we are authoritative for *)
+let our_domain =
+  sprintf "d%d.%s" Config.signpost_number Config.domain
 
-  *  - Request for A to connect B results in a calculation that pull in
-  *    FROC behaviours when evaluating possible tactics. If any of these
-  *    behaviours change in the future, it will trigger a recalculation of
-  *    those tactics.
-  *
-  *  - When a node joins or leaves, this may also trigger a recalculation.
-  *
-  *  - Each tactic is an edge in the network, and has its own independent
-  *    thread, and when it changes state, can also trigger a recalculation.
-  *
-  *  So, we have a graph of nodes/edges, and the main FRP
-  *)
-let _ = test ()
+let our_iodine_domain =
+  let d = "d" ^ (string_of_int Config.signpost_number) in
+  [ "i"; d; Config.domain ]
+
+(* Respond with an NXDomain if record doesnt exist *)
+let nxdomain =
+  return (Some { Dns.Query.rcode=`NXDomain; aa=false;
+    answer=[]; authority=[]; additional=[] })
+
+(* Figure out the response from a query packet and its question section *)
+let get_response packet q =
+  let open Dns.Packet in
+  let module DQ = Dns.Query in
+  (* Normalise the domain names to lower case *)
+  let qnames = List.map String.lowercase q.q_name in
+  (* First, check in the static zonefile trie if the domain is present *)
+  let answer_from_trie = Dns.(Query.answer_query q.q_name q.q_type Loader.(state.db.trie)) in
+  eprintf "answer_from_trie: %s\n%!" (string_of_rcode answer_from_trie.DQ.rcode);
+  (* It's an NXDOMAIN, check if it is a dynamic DNS response, otherwise
+   * use whatever came back from the trie *)
+  match answer_from_trie.DQ.rcode with 
+  |`NXDomain -> begin
+    (* For this strawman, we assume a valid query has form
+     * <src node>.<dst node>.<password>.<username>.<domain name>
+     *)
+    match qnames with
+    |src::dst::password::user::domain -> begin
+       let domain = String.concat "." domain in
+       eprintf "src:%s dst:%s pass:%s user:%s dom:%s\n%!" src dst password user domain;
+       answer_from_trie
+    end
+    |_ ->
+       eprintf "TODO: issue unknown response\n%!";
+       answer_from_trie
+  end
+  |_ -> answer_from_trie
+
+let dnsfn ~src ~dst packet =
+  let open Dns.Packet in
+  match packet.questions with
+  |[] -> eprintf "bad dns query: no questions\n%!"; return None
+  |[q] -> return (Some (get_response packet q))
+  |_ -> eprintf "dns dns query: multiple questions\n%!"; return None
+
+let dns_t () =
+  lwt fd, src = Dns_server.bind_fd ~address:"0.0.0.0" ~port:5354 in
+  let zonebuf = sprintf "
+$ORIGIN %s. ;
+$TTL 0
+
+@ IN SOA %s. hostmaster.%s. (
+  2012011206      ; serial number YYMMDDNN
+  28800           ; Refresh
+  7200            ; Retry
+  864000          ; Expire
+  86400           ; Min TTL
+)
+
+@ A %s
+i NS %s.
+" our_domain Config.external_ip our_domain Config.external_ip Config.external_dns in
+  eprintf "%s\n%!" zonebuf;
+  Dns.Zone.load_zone [] zonebuf;
+  Dns_server.listen ~fd ~src ~dnsfn
+
+let _ =
+  let daemon_t = join [ dns_t (); Signal.http_t () ] in
+  Lwt_main.run daemon_t

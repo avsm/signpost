@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 3a022fa7e71aadb8ae394d17cddae829)
+# DO NOT EDIT (digest: ad4d0e8d9476e69fd5244aac895d8844)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -17,11 +17,15 @@
 <frost.{native,byte}>: pkg_ocamlgraph
 <frost.{native,byte}>: pkg_lwt.unix
 <frost.{native,byte}>: pkg_lwt.syntax
-<frost.{native,byte}>: pkg_froc
+<frost.{native,byte}>: pkg_dns.server
+<frost.{native,byte}>: pkg_dns
+<frost.{native,byte}>: pkg_cohttpd
 <*.ml{,i}>: pkg_ocamlgraph
 <*.ml{,i}>: pkg_lwt.unix
 <*.ml{,i}>: pkg_lwt.syntax
-<*.ml{,i}>: pkg_froc
+<*.ml{,i}>: pkg_dns.server
+<*.ml{,i}>: pkg_dns
+<*.ml{,i}>: pkg_cohttpd
 <frost.{native,byte}>: custom
 # OASIS_STOP
 <*.ml{,i}>: syntax_camlp4o
