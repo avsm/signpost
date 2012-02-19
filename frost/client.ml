@@ -14,16 +14,29 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-let user = "avsm"
-let signpost_number = 1
-let domain = "signpo.st"
-let ip_slash_24 = "172.16.11."
-let external_ip = "50.19.186.111"
-let external_dns = "ec2-50-19-186-111.compute-1.amazonaws.com"
+open Lwt
+open Printf
 
-let iodine_node_ip = "172.16.9.1"
-(* for testing *)
-let iodine_node_ip = "127.0.0.1"
+let node_name = ref "unknown"
+let node_ip = ref "unknown"
 
+let sa = Unix.(ADDR_INET (inet_addr_of_string Config.iodine_node_ip, Config.signal_port))
 
-let signal_port = 3456
+let usage () = eprintf "Usage: %s <node-name> <node-ip>\n%!" Sys.argv.(0); exit 1
+
+let client_t =
+  (try node_name := Sys.argv.(1) with _ -> usage ());
+  (try node_ip := Sys.argv.(2) with _ -> usage ());
+  let fd = Lwt_unix.(socket PF_INET SOCK_DGRAM 0) in
+  let hello_rpc = Rpc.Hello (!node_name, !node_ip) in
+  let buf = Rpc.rpc_to_string hello_rpc in
+  let xmit_t =
+     while_lwt true do
+       lwt len' = Lwt_unix.sendto fd buf 0 (String.length buf) [] sa in
+       eprintf "sent [%d]: %s\n%!" len' buf;
+       Lwt_unix.sleep 2.0
+     done
+  in
+  xmit_t
+
+let _ = Lwt_unix.run client_t

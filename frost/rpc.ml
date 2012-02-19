@@ -14,16 +14,32 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-let user = "avsm"
-let signpost_number = 1
-let domain = "signpo.st"
-let ip_slash_24 = "172.16.11."
-let external_ip = "50.19.186.111"
-let external_dns = "ec2-50-19-186-111.compute-1.amazonaws.com"
+type node_name = string
+type ip = string
 
-let iodine_node_ip = "172.16.9.1"
-(* for testing *)
-let iodine_node_ip = "127.0.0.1"
+type rpc = 
+  |Hello of node_name * ip
 
 
-let signal_port = 3456
+let rpc_to_json rpc =
+  let open Json in
+  Object [
+    match rpc with
+    |Hello (n,i) -> "hello", (Array [ String n; String i ])
+   ]
+
+let rpc_of_json =
+  let open Json in
+  function
+  |Object [ "hello", (Array [String n; String i]) ] ->
+     Some (Hello (n,i))
+  |_ -> None
+ 
+let rpc_to_string rpc =
+  Json.to_string (rpc_to_json rpc)
+
+let rpc_of_string s =
+  let json = try Some (Json.of_string s) with _ -> None in 
+  match json with
+  |None -> None
+  |Some x -> rpc_of_json x

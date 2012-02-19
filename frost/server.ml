@@ -87,5 +87,5 @@ i NS %s.
   Dns_server.listen ~fd ~src ~dnsfn
 
 let _ =
-  let daemon_t = join [ dns_t (); Signal.http_t () ] in
+  let daemon_t = join [ dns_t (); Signal.server_t () ] in
   Lwt_main.run daemon_t

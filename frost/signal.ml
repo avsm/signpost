@@ -14,61 +14,40 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-(* Signalling HTTP server that runs over Iodine *)
+(* Signalling UDP server that runs over Iodine *)
 open Lwt
 open Printf
-open Cohttp
 
-module Resp = struct
-  (* respond with an error *)
-  let not_found req err =
-    let status = `Not_found in
-    let headers = [ "Cache-control", "no-cache" ] in
-    let resp = sprintf "<html><body><h1>Error</h1><p>%s</p></body></html>" err in
-    let body = [`String resp] in
-    Response.init ~body ~headers ~status ()
+(* Listens on port Config.signal_port *)
 
-  (* internal error *)
-  let internal_error err =
-    let status = `Internal_server_error in
-    let headers = [ "Cache-control", "no-cache" ] in
-    let resp = sprintf "<html><body><h1>Internal Server Error</h1><p>%s</p></body></html>" err in
-    let body = [`String resp] in
-    Response.init ~body ~headers ~status ()
+let send_hello ~src ~dst ip =
+  Rpc.rpc_to_string (Rpc.Hello ("",""))
 
-  (* dynamic response *)
-  let dyn req body =
-    let status = `OK in
-    let headers = [] in
-    Response.init ~body ~headers ~status ()
+let bind_fd ~address ~port =
+  lwt src = try_lwt
+    let hent = Unix.gethostbyname address in
+    return (Unix.ADDR_INET (hent.Unix.h_addr_list.(0), port))
+  with _ ->
+    raise_lwt (Failure ("cannot resolve " ^ address))
+  in
+  let fd = Lwt_unix.(socket PF_INET SOCK_DGRAM 0) in
+  let () = Lwt_unix.bind fd src in
+  return fd
 
-  (* index page *)
-  let index req =
-    let body = [`String "Hello World"] in
-    return (dyn req body)
+let sockaddr_to_string =
+  function
+  |Unix.ADDR_UNIX x -> sprintf "UNIX %s" x
+  |Unix.ADDR_INET (a,p) -> sprintf "%s:%d" (Unix.string_of_inet_addr a) p
 
-  (* dispatch non-file URLs *)
-  let dispatch req =
-    function
-    | []
-    | ["index.html"]  ->
-        index req
-    | _ ->
-        return (not_found req "dispatch")
-end
+let server_t () =
+  (* Listen for UDP packets *)
+  lwt fd = bind_fd ~address:"0.0.0.0" ~port:Config.signal_port in
+  while_lwt true do
+    let buf = String.create 4096 in
+    lwt len, dst = Lwt_unix.recvfrom fd buf 0 (String.length buf) [] in
+    let subbuf = String.sub buf 0 len in
+    eprintf "udp recvfrom %s : %s\n%!" (sockaddr_to_string dst) subbuf;
+    let rpc = Rpc.rpc_of_string subbuf in
+    return ()
+  done
 
-(* main callback function *)
-let dispatch conn_id req =
-  let path = Cohttp.Request.path req in
-  printf "HTTP: %s %s [%s]\n%!" (Common.string_of_method (Request.meth req)) path 
-    (String.concat "," (List.map (fun (h,v) -> sprintf "%s=%s" h v) 
-      (Request.params_get req)));
-  let path_elem = Re_str.(split (regexp_string "/") path) in
-  lwt resp = Resp.dispatch req path_elem in
-  Cohttpd.Server.respond_with resp
-
-let http_t () =
-  let open Cohttpd.Server in
-  let port = 8080 in
-  let spec = { default_spec with callback=dispatch; port=port; auto_close=true } in
-  main spec
