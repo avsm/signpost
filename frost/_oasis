@@ -7,10 +7,18 @@ License:     LGPL-2.0 with OCaml linking exception
 Plugins:     META (0.2)
 BuildTools:  ocamlbuild
 
-Executable frost
+Executable server
   Path:               .
-  MainIs:             frost.ml
+  MainIs:             server.ml
   Custom:             true
   CompiledObject:     best
   Install:            false
-  BuildDepends:       lwt.syntax,lwt.unix,ocamlgraph
+  BuildDepends:       lwt.syntax,lwt.unix,ocamlgraph,dns,dns.server
+
+Executable client
+  Path:               .
+  MainIs:             client.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       lwt.syntax,lwt.unix

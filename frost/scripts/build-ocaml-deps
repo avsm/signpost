@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+sudo apt-get update
+sudo apt-get -y install liblwt-ssl-ocaml-dev liblwt-ocaml-dev ocaml-native-compilers libounit-ocaml-dev git ocaml-findlib build-essential libbitstring-ocaml-dev libocamlgraph-ocaml-dev
+
+rm -rf obj
+mkdir obj
+cd obj
+
+for i in re uri cohttp cohttpserver dns; do
+  git clone http://github.com/avsm/ocaml-$i
+  cd ocaml-$i
+  make build
+  sudo make reinstall
+  cd ..
+done
+
+cd ..
+rm -rf obj

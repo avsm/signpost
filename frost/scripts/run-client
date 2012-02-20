@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -ex
+
+killall iodine || true
+sleep 1
+PASS=`cat scripts/PASSWD`
+iodine -r -P ${PASS} i.d1.signpo.st
+IP=`ifconfig tun0 |grep 172.16 | awk '{print $2}'`
+./client.native `hostname -s` $IP

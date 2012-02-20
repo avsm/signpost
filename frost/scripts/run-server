@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+
+d=$(dirname $(readlink -f $0))
+if [ ! -e "${d}/PASSWD" ]; then
+  echo Create file called PASSWD in ${d} containing your password
+  exit 1
+fi
+
+cd ${d}
+PASS=`cat PASSWD`
+killall iodined
+iodined -F /tmp/iodine.pid -P "${PASS}" -c -b 5354 172.16.9.1/24 i.d1.signpo.st
+../server.native
