@@ -10,6 +10,9 @@ use Crypt::OpenSSL::Bignum;
 use Net::DNS::SEC::Private;
 use Crypt::OpenSSL::CA;
 
+# used to print nicely the date on the certificate
+use POSIX;
+
 use strict;
 
 sub construct_rsa_key {
@@ -55,7 +58,7 @@ sub construct_rsa_key {
 	return $rsa_pub;                                         
 }
 
-sub transform_key {
+sub load_in_keys {
 	my $opt = shift;
 	my @in_keys;
 	my $in_key;
@@ -112,9 +115,16 @@ sub transform_key {
 		$in_key = Crypt::OpenSSL::RSA->new_public_key($data);
 		push @in_keys, ($in_key);
 	}
+	
+	return \@in_keys
+}
 
+sub transform_key {
+	my $opt = shift;
+	my $in_keys = load_in_keys($opt);
+	
 	if ($opt->{"out_type"} eq "pem_priv") {
-		foreach my $key (@in_keys) {
+		foreach my $key (@{$in_keys}) {
 			if($key->is_private) {
 				open(FILE, '>', $opt->{"out_key"});
 				print FILE $key->get_private_key_string();
@@ -122,9 +132,9 @@ sub transform_key {
 			}
 		}
 	} elsif ($opt->{"out_type"} eq "pem_pub") {
-			foreach my $key (@in_keys) {
+			foreach my $key (@{$in_keys}) {
 				open(FILE, '>', $opt->{"out_key"});
-				print FILE $key->get_public_key_string();
+				print FILE $key->get_public_key_x509_string();
 				close(FILE);
 		}
 	} else {
@@ -135,17 +145,55 @@ sub transform_key {
 
 sub sign_key {
 	my $opt = shift;
+	my %cert_det;
 	print "out subject ". $opt->{"out_subj"}. "\n";
 	my @entries = split(";", $opt->{"out_subj"}); 
 	foreach my $entry (@entries) {
-	my %cert_det;
 		if($entry =~ /(.*)=(.*)/) {
 			print "$1 $2\n";
 			$cert_det{$1} = $2;
 		}
 	}
-	Crypt::OpenSSL::CA::X509->new()
 
+	# load the public or private in keys
+	my $in_keys = load_in_keys($opt);
+	foreach my $key ( @{$in_keys}) {
+		print $key->get_public_key_x509_string();
+		my $pub_key = Crypt::OpenSSL::CA::PublicKey->parse_RSA($key->get_public_key_x509_string());
+		my $x509 = Crypt::OpenSSL::CA::X509->new($pub_key);
+		# beware the fields must be in a proper sequence
+		$x509->set_subject_DN(Crypt::OpenSSL::CA::X509_NAME->new(%cert_det));
+
+		my $issuer_name;
+		if(exists($opt->{"in_ca_cert"})) {
+			print "loading issuer details from cert file\n";
+			open my $fh, '<', $opt->{"in_ca_cert"} or die "error opening ". $opt->{"in_ca_cert"} .": $!";
+			my $data = do { local $/; <$fh> };
+			$issuer_name = Crypt::OpenSSL::CA::X509->parse($data)->get_subject_DN();
+		} else {
+			print "no ca cert is provided, assume the cert is self signed\n";
+			$issuer_name = Crypt::OpenSSL::CA::X509_NAME->new(%cert_det);
+		}
+
+		$x509->set_issuer_DN($issuer_name);
+		
+		my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+		$x509->set_notBefore(POSIX::strftime("%Y%m%d%H%M%SZ", $sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst));
+		$x509->set_notAfter (POSIX::strftime("%Y%m%d%H%M%SZ", $sec,$min,$hour,$mday,$mon,($year+1),$wday,$yday,$isdst));
+		
+		open my $fh, '<', $opt->{"in_ca_priv"} or die "error opening ". $opt->{"in_ca_priv"} .": $!";
+		my $data = do { local $/; <$fh> };
+		print "Public key loaded\n";
+		print $data;
+		my $sign_key = Crypt::OpenSSL::CA::PrivateKey->parse($data);
+		print "Public key loaded\n";
+		my $crt = $x509->sign ( $sign_key, "sha1");
+		print $x509->dump();
+		open(FILE, '>', $opt->{"out_key"});
+		print FILE $crt;
+		close(FILE);
+}
+	# Crypt::OpenSSL::CA::X509->new()
 }
 
 sub manage_key {

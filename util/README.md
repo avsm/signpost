@@ -1,3 +1,12 @@
+INSTALL
+----------
+
+sudo apt-get install build-essential libssl-dev libnet-dns-perl libnet-dns-sec-perl
+sudo cpan -i Crypt::OpenSSL::CA
+
+Usage
+---------
+
 1) Converting dnssec private key to pem private key
 
 ./key_convert.pl --in_key=dnnsec-key --in_type=dns_priv --action=transform --out_type=pem_priv --out_key=dnssec-key.pem
