@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hello">Hello World, RTT and Net EvaluatorActivity!</string>
+    <string name="app_name">RTT_Net_Monitor</string>
+    <string name="foreground_service_started">Service started</string>
+</resources>
