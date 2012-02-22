@@ -2,17 +2,33 @@
 
 open Printf
 
-(* node name -> IP address *)
+type node = {
+  signalling_channel: Sp.ip;
+  name: Sp.name
+}
+
+(* node name -> Sp.node *)
 let nodes = Hashtbl.create 1
 
-let update name value =
-  eprintf "Updating %s : %s\n%!" name value;
-  Hashtbl.replace nodes name value
+let update name node =
+  Hashtbl.replace nodes name node
+
+let new_node_with_name name sig_ch =
+  {
+    name = name;
+    signalling_channel = sig_ch
+  }
+
+let update_sig_channel name sig_channel =
+  try
+    let node = (Hashtbl.find nodes name) in
+    update name {node with signalling_channel = sig_channel}
+  with Not_found ->
+    update name (new_node_with_name name sig_channel)
 
 let get_ip name =
-  Hashtbl.find nodes name
-
-let testing = update "me" "127.0.0.1"
+  let node = (Hashtbl.find nodes name) in
+  node.signalling_channel
 
 (* in int32 format for dns. default to 0.0.0.0 *)
 let get_node_ip name =
@@ -35,3 +51,13 @@ let get_node_ip name =
     with Not_found -> 0l
   in
   ip
+
+(* It seems this is needed in order to have the compiler understand
+ * the type of the hash table... nasty stuff. *)
+let testing = 
+  let name = "me" in
+  let me = {
+    name = name;
+    signalling_channel = "127.0.0.1"
+  } in
+  update name me

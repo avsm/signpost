@@ -25,7 +25,7 @@ let handle_rpc =
      return ()
   |Some (Hello (node,ip)) ->
      eprintf "rpc: hello %s -> %s\n%!" node ip;
-     Nodes.update node ip;
+     Nodes.update_sig_channel node ip;
      return ()
 
 (* Listens on port Config.signal_port *)
