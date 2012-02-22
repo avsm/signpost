@@ -1,0 +1,46 @@
+Current goal:
+  - Create satisfactory connections between two end nodes
+    - What is a satisfactory connection?
+      - A connection that can be used for two way communication
+      - A connection that satisfies all the users requirements
+          - What is a requirement?
+            - Requirements are properties of a connection, and can include things like:
+                - Authenticated
+                - Encrypted
+                - Bidirectional
+                - Anonymous
+  - Avoid duplicate work
+      - Don't create connections that already exist
+      - Don't try to create a connection, if a connection of the same type is already in the process of being created
+      - Don't try to create a connection if one of the same type was recently tried, but failed
+
+For now it is assumed that the successful execution of any tactic will return two IP-endpoints, one for each of the two clients the connection is between. 
+
+Each tactic provides a connection. Connections can be hierarchically structured, i.e. a tactic creates a connection, that is used by another tactic to create another connection on top of. Layered connection are created when a single connection does not satisfy all the properties required of the connection by the user. 
+A connection failing or changing will affect all other connections that are built on top of it.
+We therefore need a design that takes connection dependencies into account (froc or react).
+
+Connections are only layered if an existing connection does not provide all the required properties, and a tactic can provide one or more of these by layering a new connection on top of an existing one.
+By always requiring that a tactic provides additional required properties over what a connection already has, we avoid using the same tactic twice in a single connection (i.e. OpenVPN over SSH VPN over OpenVPN).
+
+A connection has the following state
+- A connection can be:
+  - Working: Can be used for traffic
+  - Pending: In the process of being setup
+  - Failed: If it couldn't be setup
+- A connection has two end points
+- A connection potentially has a relay node (OpenVPN Server, etc)
+- End node IPs
+- A connection is bidirectional. A connection A -> B is therefore the same as a connection B -> A.
+- A connection can depend on another connection (what does a connection that doesn't depend directly on another connection, depend on? Availability of an interface?)
+
+All connections depending on a connection that is Pending or Failed must themselves have the same status.
+So if we have
+
+| iodine (Status: Failed)
+| -> ipsec (Status: Failed, because iodine has status Failed).
+
+The tactics engine knows which nodes can acts a relay nodes and can provide a list of these to the tactics.
+If a relay node that is being used by a connection no longer is operational, the connection should be updated, and likewise also all dependent connections.
+
+There will be more corner cases, but I think this can work as a starting point, to get a hello world engine up and running.
