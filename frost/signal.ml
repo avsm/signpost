@@ -18,8 +18,6 @@
 open Lwt
 open Printf
 
-let testing = Nodes.testing
-
 let handle_rpc =
   let open Rpc in function
   |None ->
