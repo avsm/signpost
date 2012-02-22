@@ -3,32 +3,35 @@
 open Printf
 
 type node = {
-  signalling_channel: Sp.ip;
+  signalling_channel: Sp.signalling_channel;
   name: Sp.name
 }
 
 (* node name -> Sp.node *)
 let nodes = Hashtbl.create 1
 
+let new_node_with_name name = {
+  name = name;
+  signalling_channel = Sp.NoSignallingChannel
+}
+
 let update name node =
   Hashtbl.replace nodes name node
 
-let new_node_with_name name sig_ch =
-  {
-    name = name;
-    signalling_channel = sig_ch
-  }
+let get name = 
+  try (Hashtbl.find nodes name)
+  with Not_found -> (new_node_with_name name)
 
-let update_sig_channel name sig_channel =
-  try
-    let node = (Hashtbl.find nodes name) in
-    update name {node with signalling_channel = sig_channel}
-  with Not_found ->
-    update name (new_node_with_name name sig_channel)
+let update_sig_channel name sig_channel_ip =
+  let node = get name in
+  let sch = Sp.SignallingChannel(sig_channel_ip) in
+  update name {node with signalling_channel = sch}
 
 let get_ip name =
-  let node = (Hashtbl.find nodes name) in
-  node.signalling_channel
+  let node = get name in
+  match node.signalling_channel with
+    | Sp.NoSignallingChannel -> raise Not_found
+    | Sp.SignallingChannel(ip) -> ip
 
 (* in int32 format for dns. default to 0.0.0.0 *)
 let get_node_ip name =
@@ -58,6 +61,6 @@ let testing =
   let name = "me" in
   let me = {
     name = name;
-    signalling_channel = "127.0.0.1"
+    signalling_channel = Sp.SignallingChannel("127.0.0.1")
   } in
   update name me

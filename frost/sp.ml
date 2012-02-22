@@ -9,3 +9,6 @@ type addressable =
   | IPAddressInstance of ip
   | SRVInstance of srv
 
+type signalling_channel =
+  | SignallingChannel of ip
+  | NoSignallingChannel
