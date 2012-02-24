@@ -15,6 +15,12 @@ for i in re uri cohttp cohttpserver dns; do
   cd ..
 done
 
+git clone http://github.com/crotsos/ocaml-openflow
+cd ocaml-openflow
+make build
+sudo make reinstall
+cd ..
+
 if [ "`whereis ovs-vsctl | wc -l`" -gt 0 ]; then 
   git clone http://openvswitch.org/git/openvswitch
   cd openvswitch

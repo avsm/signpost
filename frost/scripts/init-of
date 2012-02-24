@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+sudo modprobe -r bridge
+sudo modprobe openvswitch_mod
+sudo modprobe brcompat_mod
+
+if [ ! -e /etc/openvswitch/ ]; then
+    mkdir /etc/openvswitch/;
+  fi
+
+if [ ! -e /etc/openvswitch/conf.db ]; then
+    ovsdb-tool create  /etc/openvswitch/conf.db /usr/local/share/openvswitch/vswitch.ovsschema
+fi
+
+
+ovsdb-server /etc/openvswitch/conf.db  --remote=punix:/var/run/ovsdb-server --detach --monitor
+ovs-vswitchd  unix:/var/run/ovsdb-server --detach --monitor
+
+ovs-vsctl --db=unix:/var/run/ovsdb-server init
+ovs-vsctl --db=unix:/var/run/ovsdb-server add-br br0 
+ovs-vsctl --db=unix:/var/run/ovsdb-server add-port br0 tactic10
+ovs-vsctl --db=unix:/var/run/ovsdb-server set-controller br0 tcp:localhost:6633
+ovs-vsctl --db=unix:/var/run/ovsdb-server set-fail-mode br0 standalone
+
+sudo ifconfig br0 up
