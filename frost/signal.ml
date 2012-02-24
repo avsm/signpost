@@ -17,43 +17,71 @@
 (* Signalling UDP server that runs over Iodine *)
 open Lwt
 open Printf
+open Int64
 
-let handle_rpc =
-  let open Rpc in function
-  |None ->
-     eprintf "warning: bad rpc\n%!";
-     return ()
-  |Some (Hello (node,ip)) ->
-     eprintf "rpc: hello %s -> %s\n%!" node ip;
-     Nodes.update_sig_channel node ip;
-     return ()
+module type SignallingHandlerSig = sig
+  val handle_rpc : Rpc.rpc option -> unit Lwt.t
+end
 
-(* Listens on port Config.signal_port *)
-let bind_fd ~address ~port =
-  lwt src = try_lwt
-    let hent = Unix.gethostbyname address in
-    return (Unix.ADDR_INET (hent.Unix.h_addr_list.(0), port))
-  with _ ->
-    raise_lwt (Failure ("cannot resolve " ^ address))
-  in
-  let fd = Lwt_unix.(socket PF_INET SOCK_DGRAM 0) in
-  let () = Lwt_unix.bind fd src in
-  return fd
+module Signalling (Handler : SignallingHandlerSig) = struct
+  (* Listens on port Config.signal_port *)
+  let bind_fd ~address ~port =
+    lwt src = try_lwt
+      let hent = Unix.gethostbyname address in
+      return (Unix.ADDR_INET (hent.Unix.h_addr_list.(0), port))
+    with _ ->
+      raise_lwt (Failure ("cannot resolve " ^ address))
+    in
+    let fd = Lwt_unix.(socket PF_INET SOCK_DGRAM 0) in
+    let () = Lwt_unix.bind fd src in
+    return fd
 
-let sockaddr_to_string =
-  function
-  |Unix.ADDR_UNIX x -> sprintf "UNIX %s" x
-  |Unix.ADDR_INET (a,p) -> sprintf "%s:%d" (Unix.string_of_inet_addr a) p
+  let sockaddr_to_string =
+    function
+    | Unix.ADDR_UNIX x -> sprintf "UNIX %s" x
+    | Unix.ADDR_INET (a,p) -> sprintf "%s:%d" (Unix.string_of_inet_addr a) p
+
+  let thread ~address ~port =
+    (* Listen for UDP packets *)
+    lwt fd = bind_fd ~address ~port in
+    while_lwt true do
+      let buf = String.create 4096 in
+      lwt len, dst = Lwt_unix.recvfrom fd buf 0 (String.length buf) [] in
+      let subbuf = String.sub buf 0 len in
+      eprintf "udp recvfrom %s : %s\n%!" (sockaddr_to_string dst) subbuf;
+      let rpc = Rpc.rpc_of_string subbuf in
+      Handler.handle_rpc rpc;
+    done
+
+  let send_fd = Lwt_unix.(socket PF_INET SOCK_DGRAM 0)
+
+  let send rpc dst =
+    let buf = Rpc.rpc_to_string rpc in
+    lwt len' = Lwt_unix.sendto send_fd buf 0 (String.length buf) [] dst in
+    return (eprintf "sent [%d]: %s\n%!" len' buf)
+
+  let addr_from ip port = 
+    eprintf "Creating destiantion %s:%Ld\n" ip port;
+    Unix.(ADDR_INET (inet_addr_of_string ip, (to_int port)))
+end
+
+
+
+(* 
+ * Create signalling channel for server 
+ *)
+module Server = Signalling (ServerSignalling)
 
 let server_t () =
-  (* Listen for UDP packets *)
-  lwt fd = bind_fd ~address:"0.0.0.0" ~port:Config.signal_port in
-  while_lwt true do
-    let buf = String.create 4096 in
-    lwt len, dst = Lwt_unix.recvfrom fd buf 0 (String.length buf) [] in
-    let subbuf = String.sub buf 0 len in
-    eprintf "udp recvfrom %s : %s\n%!" (sockaddr_to_string dst) subbuf;
-    let rpc = Rpc.rpc_of_string subbuf in
-    handle_rpc rpc;
-  done
+  Server.thread ~address:"0.0.0.0" ~port:Config.signal_port
 
+
+(* 
+ * Create signalling channel for client 
+ *)
+module Client = Signalling (ClientSignalling)
+
+let client_t ~port =
+  (* For now, as a nasty hack, make the client signalling channel 
+   * listen for datagrams at the server signalling channel port + 1 *)
+  Client.thread ~address:"0.0.0.0" ~port:(to_int port)

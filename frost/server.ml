@@ -33,7 +33,7 @@ let nxdomain =
 (* Ip address response for a node *)
 let ip_resp ~dst ~src ~domain =
   let open Dns.Packet in
-  let node_ip = Nodes.get_node_ip dst in
+  let node_ip = Connections.find src dst in
   let node = {
     rr_name=dst::src::domain;
     rr_class=`IN;

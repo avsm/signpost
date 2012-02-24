@@ -1,6 +1,7 @@
 (* This module deals with operations that have to do with nodes. *)
 
 open Printf
+open Int64
 
 type node = {
   signalling_channel: Sp.signalling_channel;
@@ -22,16 +23,16 @@ let get name =
   try (Hashtbl.find nodes name)
   with Not_found -> (new_node_with_name name)
 
-let update_sig_channel name sig_channel_ip =
+let update_sig_channel name channel_ip port =
   let node = get name in
-  let sch = Sp.SignallingChannel(sig_channel_ip) in
+  let sch = Sp.SignallingChannel(channel_ip, port) in
   update name {node with signalling_channel = sch}
 
 let get_ip name =
   let node = get name in
   match node.signalling_channel with
     | Sp.NoSignallingChannel -> raise Not_found
-    | Sp.SignallingChannel(ip) -> ip
+    | Sp.SignallingChannel(ip, _port) -> ip
 
 (* in int32 format for dns. default to 0.0.0.0 *)
 let get_node_ip name =
@@ -55,12 +56,19 @@ let get_node_ip name =
   in
   ip
 
+let signalling_channel name =
+  let node = get name in
+  match node.signalling_channel with
+  | Sp.NoSignallingChannel -> raise Not_found
+  | Sp.SignallingChannel(ip, port) -> (ip, port)
+  
+
 (* It seems this is needed in order to have the compiler understand
  * the type of the hash table... nasty stuff. *)
 let testing = 
   let name = "me" in
   let me = {
     name = name;
-    signalling_channel = Sp.SignallingChannel("127.0.0.1")
+    signalling_channel = Sp.SignallingChannel("127.0.0.1", (of_int 4444))
   } in
   update name me

@@ -16,27 +16,33 @@
 
 open Lwt
 open Printf
+open Int64
 
 let node_name = ref "unknown"
 let node_ip = ref "unknown"
+let node_port = ref (of_int 0)
 
-let sa = Unix.(ADDR_INET (inet_addr_of_string Config.iodine_node_ip, Config.signal_port))
+let sa = (Signal.Client.addr_from Config.iodine_node_ip (of_int Config.signal_port))
 
-let usage () = eprintf "Usage: %s <node-name> <node-ip>\n%!" Sys.argv.(0); exit 1
+let usage () = eprintf "Usage: %s <node-name> <node-ip> <node-signalling-port>\n%!" Sys.argv.(0); exit 1
 
-let client_t =
-  (try node_name := Sys.argv.(1) with _ -> usage ());
-  (try node_ip := Sys.argv.(2) with _ -> usage ());
-  let fd = Lwt_unix.(socket PF_INET SOCK_DGRAM 0) in
-  let hello_rpc = Rpc.Hello (!node_name, !node_ip) in
-  let buf = Rpc.rpc_to_string hello_rpc in
+let client_t () =
+  let hello_rpc = Rpc.Hello (!node_name, !node_ip, !node_port) in
   let xmit_t =
      while_lwt true do
-       lwt len' = Lwt_unix.sendto fd buf 0 (String.length buf) [] sa in
-       eprintf "sent [%d]: %s\n%!" len' buf;
+       Signal.Client.send hello_rpc sa >>
        Lwt_unix.sleep 2.0
      done
   in
   xmit_t
 
-let _ = Lwt_unix.run client_t
+let _ =
+  (try node_name := Sys.argv.(1) with _ -> usage ());
+  (try node_ip := Sys.argv.(2) with _ -> usage ());
+  (try node_port := (of_int (int_of_string Sys.argv.(3))) with _ -> usage ());
+  let daemon_t = join 
+  [ 
+    client_t (); 
+    Signal.client_t ~port:!node_port
+  ] in
+  Lwt_main.run daemon_t
