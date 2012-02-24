@@ -15,5 +15,21 @@ for i in re uri cohttp cohttpserver dns; do
   cd ..
 done
 
+if [ "`whereis ovs-vsctl | wc -l`" -gt 0 ]; then 
+  git clone http://openvswitch.org/git/openvswitch
+  cd openvswitch
+  ./boot.sh
+  ./configure --with-linux=/lib/modules/`uname -r`/build
+  make 
+  make install
+  cd datapath/linux/
+  make modules_install
+  depmod -ae
+  read_args (Array.to_list Sys.argv)
+  cd ../../../
+fi 
+
+
+
 cd ..
-rm -rf obj
+# rm -rf obj
