@@ -22,13 +22,19 @@ type port = int64
 
 type command = string
 type arg = string
-type rpc_id =
-  | Request of int64
-  | Notification
+type id = int64
+type result = 
+  | Result of string
+  | NoResult
+type error = 
+  | Error of string
+  | NoError
 
 type rpc = 
   | Hello of node_name * ip * port
-  | RPC of command * arg list * rpc_id
+  | Request of command * arg list * id
+  | Notification of command * arg list
+  | Response of result * error * id
 
 let rpc_id_counter = ref 0
 
@@ -37,14 +43,35 @@ let rpc_to_json rpc =
   Object [
     match rpc with
     | Hello (n, i, p) -> "hello", (Array [ String n; String i; Int p])
-    | RPC (c, string_args, rpc_id) -> 
+    (* Based on the specifications of JSON-RPC:
+     * http://json-rpc.org/wiki/specification *)
+    | Request (c, string_args, id) -> 
         let args = List.map (fun a -> String a) string_args in
-        "rpc", (Object [
-        ("method", String c);
-        ("params", Array args);
-        ("id", match rpc_id with
-          | Request(id) -> Int id
-          | Notification -> Null)
+        "request", (Object [
+          ("method", String c);
+          ("params", Array args);
+          ("id", Int id)
+        ])
+    | Notification (c, string_args) -> 
+        let args = List.map (fun a -> String a) string_args in
+        "notification", (Object [
+          ("method", String c);
+          ("params", Array args);
+          ("id", Null)
+        ])
+    (* When there was an error, the result must be nil *)
+    | Response (_r, Error e, id) -> 
+        "response", (Object [
+          ("result", Null);
+          ("error", String e);
+          ("id", Int id)
+        ])
+    (* When there is a result, the error has to be nil *)
+    | Response (Result r, _e, id) -> 
+        "response", (Object [
+          ("result", String r);
+          ("error", Null);
+          ("id", Int id)
         ])
    ]
 
@@ -53,17 +80,36 @@ let rpc_of_json =
   function
   | Object [ "hello", (Array [String n; String i; Int p]) ] ->
       Some (Hello (n,i, p))
-  | Object [ "rpc", Object [
+  | Object [ "request", Object [
         ("method", String c);
         ("params", Array args);
-        ("id", rpc_id)
+        ("id", Int id)
       ]
     ] ->
       let string_args = List.map (fun (String s) -> s) args in
-      let id = match rpc_id with
-        | Null -> Notification
-        | Int n -> Request(n) in
-      Some(RPC(c, string_args, id))
+      Some(Request(c, string_args, id))
+  | Object [ "notification", Object [
+        ("method", String c);
+        ("params", Array args);
+        ("id", Null)
+      ]
+    ] ->
+      let string_args = List.map (fun (String s) -> s) args in
+      Some(Notification(c, string_args))
+  | Object [ "response", Object [
+        ("result", String result);
+        ("error", Null);
+        ("id", Int id)
+      ]
+    ] ->
+      Some(Response(Result result, NoError, id))
+  | Object [ "response", Object [
+        ("result", Null);
+        ("error", String e);
+        ("id", Int id)
+      ]
+    ] ->
+      Some(Response(NoResult, Error e, id))
   | _ -> None
  
 let rpc_to_string rpc =
@@ -80,8 +126,14 @@ let fresh_id () =
   of_int !rpc_id_counter
 
 let create_rpc method_name args =
-  let id = Request (fresh_id ()) in
-  RPC(method_name, args, id)
+  let id = fresh_id () in
+  Request(method_name, args, id)
 
 let create_notification method_name args =
-  RPC(method_name, args, Notification)
+  Notification(method_name, args)
+
+let create_response_ok result id =
+  Response(Result result, NoError, id)
+
+let create_response_error error id =
+  Response(NoResult, Error error, id)

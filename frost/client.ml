@@ -29,10 +29,10 @@ let usage () = eprintf "Usage: %s <node-name> <node-ip> <node-signalling-port>\n
 let client_t () =
   let hello_rpc = Rpc.Hello (!node_name, !node_ip, !node_port) in
   let xmit_t =
-     while_lwt true do
-       Signal.Client.send hello_rpc sa >>
-       Lwt_unix.sleep 2.0
-     done
+    while_lwt true do
+      Signal.Client.send hello_rpc sa >>
+      Lwt_unix.sleep 2.0
+    done
   in
   xmit_t
 
