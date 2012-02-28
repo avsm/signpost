@@ -82,4 +82,35 @@ Here CPRF is _collision-resistant pseudo-random function_.
 
 The value ss[0] is used to generate all key material for the current connection.  SID[0] is the session ID for the current connection.
 
+tcpcrypt hooks
+--------------
 
+After opening a TCP socket, the following new options should be available from the getsockopt:
+
+* TCP_CRYPT_SESSID -> should return the session ID or error if no tcpcrypt.
+* TCP_CRYPT_SUPPORT -> returns 1 if the remote application is tcpcrypt-aware.
+
+
+A more complete of options for getsockopt/setsockopt follows:
+
+The getsockopt call should have new options for IPPROTO_TCP:
+
+* TCP_CRYPT_SESSID -> should return the session ID or error if no tcpcrypt.
+* TCP_CRYPT_PUBKEY -> should return (mine, pubkey), where pubkey is the public key used to establish the session (K_C), and mine says whether the key belongs to this host or the remote peer.
+* TCP_CRYPT_CONF -> returns encryption algorithms used for the current session.
+* TCP_CRYPT_SUPPORT -> returns 1 if the remote application is tcpcrypt-aware.
+
+
+The setsockopt call should have:
+
+* TCP_CRYPT_CACHE_FLUSH -> setting wipes cached session keys. Useful if application-level authentication discovers a man in the middle attack, to prevent the next connection from using NEXTK.
+
+The following options should be readable and writable with getsockopt and setsockopt:
+
+* TCP_CRYPT_ENABLE -> one bit, enables or disables tcpcrypt extension on an unconnected (listening or new) socket.
+* TCP_CRYPT_SECURST -> one bit, means ignore unauthenticated RST packets for this connection when set to 1.
+* TCP_CRYPT_CMODE_{DEFAULT,NEVER,ALWAYS}[_NK] -> As described in the RFC
+* TCP_CRYPT_PKCONF -> set of allowed public key algorithms and CPRFs this host advertises in CRYPT PKCONF suboptions.
+* TCP_CRYPT_CCONF -> set of allowed symmetric ciphers and message authentication codes this host advertises in CRYPT INIT1 segments.
+* TCP_CRYPT_SCONF -> order of preference of symmetric ciphers. 
+* TCP_CRYPT_SUPPORT -> set to 1 if the application is tcpcrypt-aware. set to 2 if the application requires the remote application to be tcpcrypt-aware.
